@@ -1,0 +1,15 @@
+{
+  "name": "fixture-bounded-cognito",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Synthetic fixture: a bounded Cognito/Amplify v6 app. AuthPort + adapter; vendor types stay behind the boundary; owned refresh + custom storage; domain Principal + policy; access token for APIs; contract suite.",
+  "dependencies": {
+    "aws-amplify": "^6.6.0",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.0.0",
+    "vitest": "^1.0.0",
+    "typescript": "^5.3.0"
+  }
+}
