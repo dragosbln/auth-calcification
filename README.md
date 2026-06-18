@@ -39,10 +39,10 @@ See [`methodology.md`](methodology.md) for the full framework.
 /plugin marketplace add dragosbln/auth-calcification
 
 # Install the skill:
-/plugin install auth-calcification-audit@dragosbln
+/plugin install auth-calcification-audit@auth-calcification
 ```
 
-_Run the /plugin commands from your terminal, not from Claude Code!_
+_Run the /plugin commands from the claude terminal, not from Claude Code!_
 
 ### Local development
 
@@ -101,7 +101,7 @@ See worked examples:
 - Better Auth
 - Clerk
 
-Adding a vendor = writing one profile file (`vendors/<vendor>.md`) following [`references/vendor-profile-schema.md`](skill/auth-calcification-audit/references/vendor-profile-schema.md). PRs welcome.
+Adding a vendor = writing one profile file (`vendors/<vendor>.md`) following [`references/vendor-profile-schema.md`](skill/auth-calcification-audit/skills/auth-calcification-audit/references/vendor-profile-schema.md). PRs welcome.
 
 ## The four non-negotiables
 
@@ -125,8 +125,8 @@ The IP is the **methodology** (`methodology.md`), not the orchestration. The ski
 ## Contributing
 
 **To add a vendor profile:**
-1. Read [`skill/auth-calcification-audit/references/vendor-profile-schema.md`](skill/auth-calcification-audit/references/vendor-profile-schema.md)
-2. Write `skill/auth-calcification-audit/vendors/<vendor>.md` following the schema
+1. Read [`vendor-profile-schema.md`](skill/auth-calcification-audit/skills/auth-calcification-audit/references/vendor-profile-schema.md)
+2. Write `skill/auth-calcification-audit/skills/auth-calcification-audit/vendors/<vendor>.md` following the schema
 3. Verify against current SDK docs (note the version in the Verification section)
 4. Test on a fixture (bounded + calcified examples)
 5. PR with the profile + fixture outputs
