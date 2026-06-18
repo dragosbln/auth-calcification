@@ -12,6 +12,15 @@ description: >-
   Works across identity providers through pluggable vendor profiles. Produces an
   evidence-backed report that escalates the judgment calls it cannot make instead
   of faking them, and never auto-edits auth code.
+parameters:
+  - name: interactive
+    type: boolean
+    default: true
+    description: >-
+      Run the judgment interview (Phase 2). When true, ask the maintainer
+      likelihood-of-change and cost-to-retrofit questions to enable prioritization.
+      When false, skip the interview and route all judgment questions to the
+      "Judgment calls for you" section with no priority ranking.
 ---
 
 # Auth Calcification Audit
@@ -41,13 +50,16 @@ Follow `references/detection-playbook.md` step by step.
 - Do **not** score likelihood or cost here.
 
 ### Phase 2 — Judgment interview (ask what only the human knows)
-Present the findings grouped by axis, then ask the maintainer the questions the code can't answer, grounded in what you found. Per axis:
+
+**If `interactive` is true (default):** Present the findings grouped by axis, then ask the maintainer the questions the code can't answer, grounded in what you found. Per axis:
 - **Token storage:** "Is a storage change actually on the table — e.g. a move to HttpOnly cookies?"
 - **Refresh / owned behaviors:** "Is a change to refresh or related behaviors coming (often downstream of a storage move)?"
 - **Identity provider:** "Is a provider swap realistically possible in the next year or two? Roughly how many call sites would it touch? How much vendor-specific behavior are you willing to keep?"
 - **Authorization / token type:** "Is an authorization-model change planned (RBAC/ABAC, finer permissions, ID→access token)? What backend contracts depend on the current choice?"
 
-Their answers supply **likelihood** and confirm **cost** (you provide the mechanical cost evidence — boundary quality, spread of coupling — they own the number). If there is no human in the loop, skip scoring entirely and route every question into "Judgment calls for you."
+Their answers supply **likelihood** and confirm **cost** (you provide the mechanical cost evidence — boundary quality, spread of coupling — they own the number).
+
+**If `interactive` is false:** Skip the interview entirely. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted for input.
 
 ### Phase 3 — Compose (the report)
 Fill `assets/report-template.md`:

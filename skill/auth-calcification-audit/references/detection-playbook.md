@@ -17,6 +17,16 @@ Record every confirmed finding with **file:line** and a one-line reason. Record 
 2. If a dependency looks like an auth provider but matches **no** profile, record a coverage gap ("vendor X detected, no profile available") and continue with what you can.
 3. Identify the candidate **boundary module(s)** — files that look like the intended auth seam (e.g. `lib/auth`, `auth/`, an `AuthPort`/`AuthAdapter`, a `createApiClient`). You need this because most "is it a leak" decisions hinge on *inside the boundary vs outside it*. If there is no identifiable boundary module, that is itself the headline boundary finding.
 
+### Multi-vendor and partial-boundary codebases
+
+When multiple auth vendors are detected (e.g., a codebase mid-migration from Auth0 to Cognito, or using different providers for different surfaces), assess each vendor's surface independently. **Do not collapse to a single overall verdict** ("the system is bounded" OR "the system is calcified"). Instead:
+
+- Report boundary status **per vendor** where it differs. Example: "Cognito side: boundary PRESENT. Auth0 side: boundary ABSENT."
+- In the axes findings, split per vendor where the evidence differs (e.g., "Cognito storage: custom adapter; Auth0 storage: inherited default").
+- The Coverage section must list all vendors detected and which were assessed (vs. coverage gaps).
+
+A codebase mid-migration is neither "fully bounded" nor "fully calcified" — it's in transition, and that reality must be reported honestly. A single collapsed verdict would mislead.
+
 ## Boundary signals (methodology: "The boundary is the enabler")
 
 These assess the structure that determines cost on every axis. Assess the boundary first; its quality feeds cost on Axes 1–4.
@@ -44,6 +54,19 @@ These assess the structure that determines cost on every axis. Assess the bounda
 - **Locate:** find app code that branches on execution context (client vs server) to obtain auth.
 - **Confirm:** is there `if (typeof window…)`-style branching or duplicated client/server auth logic in app code, vs a single port with context-specific adapters behind it?
 - **Finding:** "app code branches on execution context to get auth in N places" or "single port, context-specific adapters — bounded."
+
+### Boundaries with internal gaps
+
+A boundary may be structurally PRESENT (domain types exist, vendor types confined to an adapter, an `AuthPort` interface exists) but **incomplete** on one or more of the four signals above. Common gaps in an otherwise-present boundary:
+
+- **No contract suite** (B3) — the boundary exists but isn't tested independently of the vendor
+- **No policy layer** (Axis 4) — the boundary maps vendor claims to a domain `Principal`, but authorization decisions in app code still read `Principal` fields directly instead of going through a policy function
+- **No single-flight refresh wrapper** (Axis 2) — owned 401/refresh path exists, but N concurrent 401s would trigger N refresh calls
+- **Look-alike storage** (Axis 1) — appears to use a custom adapter but actually passes a built-in selector to the storage seam
+
+When you find a present boundary with gaps, **report the gaps as items to complete**, not as evidence the boundary doesn't exist. Frame these as migration-readiness findings: "you're ~80% toward a fully bounded system; what's left is [add contract suite / add policy layer / etc.]."
+
+The distinction matters for prioritization: fixing gaps in a present boundary is usually cheaper and lower-risk than introducing a boundary from scratch.
 
 ## The four change axes
 
