@@ -1,0 +1,15 @@
+{
+  "name": "fixture-mixed-edge-cases",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Synthetic fixture: a codebase mid-migration from Auth0 to Cognito, with Firebase analytics. Stress-tests multi-vendor detection, unknown-vendor honesty (no Firebase profile), the look-alike storage trap, and the skill's ability to distinguish a partial boundary (new Cognito side) from a calcified one (legacy Auth0 side).",
+  "dependencies": {
+    "aws-amplify": "^6.6.0",
+    "@auth0/auth0-spa-js": "^2.1.0",
+    "firebase": "^10.7.0",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
