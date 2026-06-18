@@ -1,7 +1,7 @@
 {
   "name": "auth-calcification-audit",
   "description": "Audits codebases for authentication calcification risk — how tightly auth is wired to vendor defaults such that future changes (storage, refresh, provider, authorization) would be expensive. Produces evidence-backed reports with prioritized remediation backlogs. Escalates judgment calls rather than faking them.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "Dragos Bilaniuc",
     "email": "dragos.bilaniuc@gmail.com"
