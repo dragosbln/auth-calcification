@@ -51,15 +51,55 @@ Follow `references/detection-playbook.md` step by step.
 
 ### Phase 2 — Judgment interview (ask what only the human knows)
 
-**If `interactive` is true (default):** Present the findings grouped by axis, then ask the maintainer the questions the code can't answer, grounded in what you found. Per axis:
-- **Token storage:** "Is a storage change actually on the table — e.g. a move to HttpOnly cookies?"
-- **Refresh / owned behaviors:** "Is a change to refresh or related behaviors coming (often downstream of a storage move)?"
-- **Identity provider:** "Is a provider swap realistically possible in the next year or two? Roughly how many call sites would it touch? How much vendor-specific behavior are you willing to keep?"
-- **Authorization / token type:** "Is an authorization-model change planned (RBAC/ABAC, finer permissions, ID→access token)? What backend contracts depend on the current choice?"
+**If `interactive` is true (default):** Briefly present the findings grouped by axis (one or two sentences per axis is enough — the full report comes in Phase 3), then ask the maintainer the questions the code can't answer.
 
-Their answers supply **likelihood** and confirm **cost** (you provide the mechanical cost evidence — boundary quality, spread of coupling — they own the number).
+**How to ask:** Use the `AskUserQuestion` tool — the multiple-choice prompt Claude Code provides natively — to ask the questions **one at a time, in order**. Do NOT batch all four into a single text prompt; the experience is markedly better when questions are presented one-by-one with concrete options. After each answer, briefly acknowledge ("Got it — likely Q3") and move on to the next axis. If the maintainer says "skip" or "stop" mid-flow, accept it and proceed to compose the report with what you have; unanswered axes go to "Judgment calls for you."
 
-**If `interactive` is false:** Skip the interview entirely. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted for input.
+For each axis, the `AskUserQuestion` call structure:
+
+**1. Token storage**
+- `question`: "Is a token storage change actually on the table? (e.g., a move to HttpOnly cookies, encrypted store, or session cookies)"
+- `header`: `Storage change`
+- `multiSelect`: false
+- `options`:
+  - label: `Yes — planned`, description: "Actively planned or in progress"
+  - label: `Maybe — discussed`, description: "Discussed but no concrete timeline"
+  - label: `No — acceptable today`, description: "Current storage is acceptable; no plans to change"
+  - label: `Don't know`, description: "Route this axis to Judgment calls"
+
+**2. Refresh and owned runtime behaviors**
+- `question`: "Is owning refresh (401-interceptor + single-flight + explicit failure path) on the roadmap?"
+- `header`: `Own refresh`
+- `multiSelect`: false
+- `options`:
+  - label: `Yes — planned`, description: "Independent of any storage change"
+  - label: `Tied to storage`, description: "Would happen if/when storage changes"
+  - label: `No — vendor refresh is fine`, description: "No plans to change"
+  - label: `Don't know`, description: "Route this axis to Judgment calls"
+
+**3. Identity provider swap**
+- `question`: "Is a provider swap realistic in the next 12–24 months?"
+- `header`: `Provider swap`
+- `multiSelect`: false
+- `options`:
+  - label: `Yes — actively planned`, description: "Migration in progress or scheduled"
+  - label: `Likely — being discussed`, description: "On the horizon but not committed"
+  - label: `Unlikely, defensive value`, description: "No plans, but optionality is worth investment"
+  - label: `No — locked in`, description: "Compliance, contracts, or org reasons rule it out"
+
+**4. Authorization model**
+- `question`: "Are authorization model changes planned?"
+- `header`: `Authz changes`
+- `multiSelect`: true
+- `options`:
+  - label: `RBAC/ABAC or finer permissions`, description: "Authorization model overhaul"
+  - label: `ID → access token`, description: "Token-type fix for API authorization"
+  - label: `Neither — current model is fine`, description: "No plans to change"
+  - label: `Don't know`, description: "Route this axis to Judgment calls"
+
+After all four answers, the maintainer's input supplies **likelihood**; the mechanical pass supplied **cost evidence** (boundary quality, spread of coupling, call-site counts). For any answer of "Don't know," route that axis to "Judgment calls for you" without forcing a likelihood.
+
+**If `interactive` is false:** Skip the interview entirely. Do NOT call `AskUserQuestion`. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted.
 
 ### Phase 3 — Compose (the report)
 Fill `assets/report-template.md`:
