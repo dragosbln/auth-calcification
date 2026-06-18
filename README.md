@@ -36,16 +36,18 @@ See [`methodology.md`](methodology.md) for the full framework.
 
 ```bash
 # Add this repo as a marketplace:
-/plugin marketplace add YOUR-USERNAME/auth-calcification
+/plugin marketplace add dragosbln/auth-calcification
 
 # Install the skill:
-/plugin install auth-calcification-audit@YOUR-USERNAME
+/plugin install auth-calcification-audit@dragosbln
 ```
+
+_Run the /plugin commands from your terminal, not from Claude Code!_
 
 ### Local development
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/auth-calcification.git
+git clone https://github.com/dragosbln/auth-calcification.git
 cd auth-calcification
 claude --plugin-dir ./skill/auth-calcification-audit
 ```
@@ -139,11 +141,11 @@ MIT — see [LICENSE](LICENSE)
 
 ## Context
 
-This skill is part of a [series on auth architecture in production](https://dev.to/YOUR-USERNAME). The methodology was developed from real work re-architecting authentication in a 100+ microservice production system. The skill makes that methodology reproducible and vendor-agnostic.
+This skill is part of a [series on auth architecture in production](https://dev.to/dragosbln/series/41021). The methodology was developed from real work re-architecting authentication in a 100+ microservice production system. The skill makes that methodology reproducible and vendor-agnostic.
 
 **Articles:**
-1. [Securing auth in a large-scale production system](https://dev.to/YOUR-USERNAME/part1) — three industry-standard architectures, constraint-stack analysis, and the foundation-move pattern
-2. [3 ways to future-proof your authentication system](https://dev.to/YOUR-USERNAME/part2) — the boundary pattern, contract testing, owned refresh, and the agentic-era framing
+1. [Securing auth in a large-scale production system](https://dev.to/dragosbln/securing-auth-in-a-large-scale-production-system-three-industry-standard-architectures-and-why-279b) — three industry-standard architectures, constraint-stack analysis, and the foundation-move pattern
+2. [3 ways to future-proof your authentication system](https://dev.to/dragosbln/keep-the-steering-wheel-3-ways-to-future-proof-your-auth-ee3) — the boundary pattern, contract testing, owned refresh, and the agentic-era framing
 3. *(Coming)* Building an agentic skill without riding the hype train — how to build AI tools that escalate judgment instead of faking it
 
-Follow along: [LinkedIn](https://linkedin.com/in/YOUR-HANDLE)
+Follow along: [LinkedIn](https://linkedin.com/in/dragosbln)
