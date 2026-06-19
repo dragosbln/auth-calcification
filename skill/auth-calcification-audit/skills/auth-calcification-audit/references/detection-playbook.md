@@ -9,6 +9,21 @@ A raw text match is a *candidate*, not a finding. Grepping for a vendor type or 
 1. **Locate** — use the profile's identifiers to find candidate locations (ripgrep/file reads).
 2. **Confirm** — open each candidate and read the surrounding code to decide whether it actually means what the signal claims. A vendor type *inside the boundary/adapter module* is correct and expected; the same type in an app-layer signature is a leak. The confirm step is where you tell those apart.
 
+### Negative findings demand a second look
+
+A "no matches" result from grep is a finding too — and the most dangerous one, because it produces silent false negatives. Before declaring **"no custom storage adapter,"** **"no contract suite,"** **"no policy layer,"** etc., check the profile for **alternative patterns** (e.g., a vendor with multiple SDK versions where the configuration API differs entirely). If a profile lists multiple ways the same concern can manifest, you must search for **all** of them before reporting absence. One grep miss + one declared absence = a confidently wrong finding.
+
+When a profile is explicit about version-specific patterns (e.g., "Amplify v5 vs v6 storage configuration"), detect the version first and apply the matching patterns. A finding stated without version qualification is incomplete.
+
+### Coverage qualification (comprehensive vs sampled)
+
+When you record findings, distinguish two reading modes and report them in the Coverage section:
+
+- **Comprehensively read** — every relevant region of a file was opened and inspected. Use for boundary/adapter modules, config files, and any file the profile names as load-bearing.
+- **Sampled via grep + confirm** — candidates from a grep result were opened and confirmed, but the file as a whole was not exhaustively scanned for other patterns. Use for surveys across large directories (e.g., "find all inline claim reads across 50 components").
+
+Both are legitimate, but they imply different confidence. A finding of "4 inline claim reads across 3 files" derived from sampled grep + confirm is honest **only if the Coverage section says** something like *"`src/components/**` sampled via grep + confirm; counts are confirmed grep hits, not an exhaustive component-by-component read."* Don't let sampled counts read like comprehensive counts in the findings.
+
 Record every confirmed finding with **file:line** and a one-line reason. Record what you **could not analyze** (unparseable files, dynamic imports, generated code) as coverage gaps — a clean section must mean "looked and found nothing," never "didn't look."
 
 ## Step 0 — Detect vendors and establish the boundary module

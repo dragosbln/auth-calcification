@@ -35,6 +35,7 @@ This skill audits the seam between an application and its identity provider for 
 2. **Never produce a false all-clear.** Report what you analyzed and what you couldn't (unparseable files, dynamic imports, a vendor with no profile). "No finding" must mean "looked and found nothing," never "didn't look."
 3. **Report and propose; do not rewrite.** Output a prioritized backlog with recommended seams. Do not edit auth code — auth is a hot path and a subtly-wrong automated edit is the exact harm this exists to prevent.
 4. **This is calcification analysis, not a security audit.** Assess changeability, not vulnerabilities. Say so in the report.
+5. **Never produce time/effort estimates.** Do NOT emit "1 hour," "2 days," "3 dev-weeks," or any other duration-based estimate. The skill produces *cost evidence* (qualitative: low / moderate / high, with the mechanical justification — boundary quality, spread of coupling, confirmed call-site counts). Time-to-complete depends on the team, test coverage, and bandwidth — that's the maintainer's number, and it belongs in "Judgment calls for you," not in the audit's findings.
 
 ## Portability invariant
 
@@ -42,11 +43,23 @@ All provider-specific knowledge lives in `vendors/*.md` profiles. **This file an
 
 ## The audit — three phases
 
+### Phase 0 — Model self-report (one short check before Phase 1)
+
+Identify the Claude model you are running on. Based on that identification:
+- If you are confident you are running on **Opus 4.7 or higher, or Sonnet 4.6 or higher**: proceed silently. No disclaimer needed.
+- If you are **uncertain** about your model, OR you can confirm you are running on Sonnet 4.5 or lower, Haiku 4.5 or lower, or any model below Opus 4.7: you MUST **prepend the following disclaimer to the report's Summary section** (Phase 3):
+  > **Model disclaimer:** This audit was run on `<self-reported model name>`. The skill is verified against Opus 4.7+ and Sonnet 4.6+; lower tiers have known recall gaps (e.g., missing version-specific configuration patterns the profile documents). Treat these findings as a **first pass** and re-run with a higher-tier model for higher confidence before acting on them.
+
+In every report, regardless of model, include a `**Model used (self-reported):**` line in the report metadata (alongside Date / Vendor profile). Self-identification is imperfect — this line exists so the human reader can verify or correct.
+
+Bias toward including the disclaimer when uncertain. A spurious disclaimer is harmless; a missing disclaimer on a weak-model run is a credibility risk.
+
 ### Phase 1 — Mechanical pass (facts, with evidence)
 Follow `references/detection-playbook.md` step by step.
 - Detect which vendor(s) the codebase uses and load the matching profile(s); record any detected-but-unprofiled vendor as a coverage gap.
 - Assess the four **boundary signals**, then the **four change axes**, using the loaded profile's identifiers.
 - For every candidate match, **open the code and confirm** before recording it — a vendor type inside the adapter is correct; the same type in app-layer code is a leak. Record each confirmed finding with **file:line** and a one-line reason, and keep a running coverage record.
+- **Before declaring any negative finding** (no custom adapter, no policy layer, no contract suite, etc.), check the profile for **alternative patterns** that could satisfy the same concern (e.g., version-specific configuration APIs). One missed pattern = one confidently wrong "no finding."
 - Do **not** score likelihood or cost here.
 
 ### Phase 2 — Judgment interview (ask what only the human knows)
@@ -102,9 +115,45 @@ After all four answers, the maintainer's input supplies **likelihood**; the mech
 **If `interactive` is false:** Skip the interview entirely. Do NOT call `AskUserQuestion`. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted.
 
 ### Phase 3 — Compose (the report)
-Fill `assets/report-template.md`:
-- Summary, **coverage**, boundary assessment, findings by axis (each with evidence + recommended seam), **migration-readiness** for any change the maintainer flagged, a **prioritized backlog** ordered by leverage with each rank traceable to *(mechanical evidence × the maintainer's likelihood/cost)*, a **"Judgment calls for you"** section, and the scope/disclaimer block.
-- Prioritize **only** with the maintainer's inputs; show which inputs were theirs. Recommend seams; don't apply them.
+
+Fill `assets/report-template.md` with: report metadata (Date, Vendor profile(s), Model used self-reported, Scope), Summary, **What auth calcification means** (a short tailored explanation — see template), Coverage (comprehensive vs sampled, plus all gaps), Boundary assessment (4 signals), Findings by axis (each with evidence + recommended seam), Migration-readiness for any change the maintainer flagged, Prioritized backlog ordered by leverage with each rank traceable to *(mechanical evidence × the maintainer's likelihood/cost)*, "Judgment calls for you," and the Scope/disclaimers block.
+
+**Cost language:** Use qualitative descriptors only — **low**, **moderate**, **high** — always grounded in concrete mechanical evidence (e.g., "moderate — three call sites bypass the boundary; the seam exists in one file"). **NEVER emit time estimates** ("1 hour," "2 days," "3 dev-weeks," etc.). Time-to-complete is the maintainer's number; it goes in "Judgment calls for you," not in findings (see non-negotiable #5).
+
+**Code in the report:** Describe seams in prose. Optional: tiny illustrative snippets (≤5 lines) clearly framed as *illustration, not a patch*. Do not write applicable code; the skill does not produce edits to auth code (non-negotiable #3).
+
+Prioritize **only** with the maintainer's inputs; show which inputs were theirs. Recommend seams; don't apply them.
+
+**Where to save the report.**
+
+Save the completed report to a file in the target directory:
+- Default path: `<target>/auth-calcification-audit-report.md`
+- If that path already exists, save as `<target>/auth-calcification-audit-report-2.md`, `-3.md`, etc. — use the next available integer. Do NOT overwrite an existing report; the previous run is the maintainer's record.
+- Do not negotiate the path with the user mid-flow; the convention above is deterministic.
+
+After saving, output to chat **only**:
+1. One line: `Saved to <path>.`
+2. One short paragraph (≤4 sentences): the top finding and the one or two most consequential implications.
+3. One line pointing the user to the file: `Read the full report at <path> for boundary assessment, per-axis findings, migration-readiness, and the prioritized backlog.`
+
+**Do not** re-emit the report in chat. **Do not** summarize every axis. The file is the artifact; the chat is the pointer.
+
+## Chat verbosity discipline (governs all phases)
+
+The chat output during a run should be sparse. Default to silence; speak only at consequential moments.
+
+**During Phase 0:** silent unless the model disclaimer applies — if so, one line.
+
+**During Phase 1:** do NOT narrate every grep, every file read, or every confirmed finding. Speak in chat only at these moments:
+- Initial vendor detection and profile load: one line ("Detected: `<vendor>` v`<version>`. Loaded profile."). If multiple vendors, list them.
+- Genuine pivots: a vendor was detected without a profile available (coverage gap), a partial-boundary situation requires per-vendor assessment, an unparseable code region forced a coverage gap.
+- The transition into Phase 2: one line ("Mechanical pass complete. Starting interview.").
+
+**During Phase 2:** ask one `AskUserQuestion` at a time. Between questions: brief acknowledgments (≤1 sentence). No findings recap — the recap is the report.
+
+**During Phase 3:** see the "Where to save the report" block above. No findings dump.
+
+**Never** describe what you are about to do in chat. Just do it.
 
 ## Where things live
 - `references/methodology.md` — why each signal matters (source of truth).
@@ -115,6 +164,9 @@ Fill `assets/report-template.md`:
 
 ## Common mistakes to avoid
 - **Grepping and stopping.** A text match is a candidate; the finding requires reading the code around it. Skipping the confirm step produces the shallow checklist this skill is meant to replace.
+- **Negative finding from a single grep pattern.** A profile may document multiple ways the same concern manifests (e.g., a vendor's v5 vs v6 storage configuration uses entirely different APIs). Searching only one pattern and declaring absence is a false negative. Detect the version first, then check the matching patterns.
 - **Confusing a built-in persistence selector with a custom storage adapter** (see each profile's look-alike note). This is a real accuracy trap.
 - **Forcing one vendor's framing onto another** (e.g. Cognito's silent auto-refresh onto Auth0's more explicit model). Use the profile's notes.
 - **Scoring without the human, or implying "secure."** Both violate the non-negotiables above.
+- **Time/effort estimates.** Don't write "1 hour," "2–3 dev-weeks," or any duration. Cost is qualitative (low/moderate/high) with mechanical justification; time-to-complete is the maintainer's number. See non-negotiable #5.
+- **Walls of text in chat.** The report is the artifact. Chat should be tight: vendor detected → save path → 1-paragraph headline. The "Chat verbosity discipline" section is binding.

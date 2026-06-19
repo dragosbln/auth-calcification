@@ -10,11 +10,27 @@ The base profile. Targets Amplify v6's modular `aws-amplify/auth` API. Amplify v
 `AuthSession` (returned by `fetchAuthSession`), `AuthTokens`, `JWT`, `AuthUser` (returned by `getCurrentUser`), `FetchUserAttributesOutput`, `AuthError`. The most common leak is an app-layer function returning an `AuthSession` or its `.tokens`, or a domain function typed to return Amplify's `AuthUser`.
 
 ## Token storage seam
+
+**Critical: Amplify v5 and v6 have completely different storage configuration patterns. Detect the version first (see Identification → Packages) and apply the matching detection rules. A finding that says "no storage configured, default localStorage" must be valid in BOTH version patterns — missing one means a false-negative finding.**
+
+### Amplify v6 (modular `aws-amplify/auth` API)
 - **Default storage**: browser `localStorage` (keys prefixed `CognitoIdentityServiceProvider.*`); in-memory if `localStorage` is unavailable.
 - **Custom storage API**: `cognitoUserPoolsTokenProvider.setKeyValueStorage(storage)` — `cognitoUserPoolsTokenProvider` from `aws-amplify/auth/cognito`. `storage` implements `KeyValueStorageInterface` (`setItem`, `getItem`, `removeItem`, `clear`) — interface from `aws-amplify/utils`. A user-defined class implementing the interface = owned storage. For Next.js, the SSR cookie path is wired via `createServerRunner` from `@aws-amplify/adapter-nextjs` plus `Amplify.configure(config, { ssr: true })` on the client; server-side Amplify APIs import from `aws-amplify/auth/server` and run inside `runWithAmplifyServerContext`.
 - **Even deeper customization**: a full `tokenProvider` (and `credentialsProvider`) can be passed to `Amplify.configure(awsconfig, { Auth: { tokenProvider: ... } })`. Presence of a custom `tokenProvider` is a strong "owned" signal beyond just storage.
 - **Look-alikes that are NOT custom storage**: passing the *built-in* `defaultStorage`, `sessionStorage`, or `new CookieStorage()` (all from `aws-amplify/utils`) to `setKeyValueStorage` configures persistence but is a built-in selector, not a custom adapter — note the distinction in the finding. The main risk is the opposite: missing `setKeyValueStorage` entirely (= default localStorage).
-- **Important caveat**: `setKeyValueStorage` overrides storage for the **TokenStore only**. The `identityId` (Cognito Identity Pool) is held in a separate `IdentityIdStore` that still uses `localStorage` in v6. "Owned storage" via `setKeyValueStorage` is a real signal but is not a complete storage swap if Identity Pools are in use. Note this in the finding.
+
+### Amplify v5 (legacy singleton `Auth` API)
+**Storage in v5 is configured via the `Amplify.configure()` object itself, NOT via a separate `setKeyValueStorage()` call. A grep for `setKeyValueStorage` or `CookieStorage` will return zero matches on a v5 codebase even when storage IS customized.** You MUST check for v5's config patterns separately:
+- **Default storage**: browser `localStorage` (same as v6) when no storage config is provided.
+- **Built-in cookie storage selector**: `Amplify.configure({ Auth: { ..., cookieStorage: { domain, path, expires, secure, sameSite } } })` — when `cookieStorage` appears as a key inside the `Auth` config object, Amplify v5 stores tokens in cookies instead of localStorage. This is the **v5 equivalent of v6's `new CookieStorage()`**: it switches storage to cookies but is **NOT a custom adapter** — same look-alike-trap class. Tokens are still vendor-managed and browser-readable.
+- **Custom storage class**: `Amplify.configure({ Auth: { ..., storage: SomeStorageClass } })` — a class (not a config object) with `setItem`/`getItem`/`removeItem`/`clear`/`sync` methods passed as `storage` is the v5 equivalent of v6's custom `KeyValueStorageInterface` implementation. This IS owned storage.
+- **Look-alikes that are NOT custom storage**: the `cookieStorage` config object above. **Distinguishing trap**: `cookieStorage:` (config object with `domain`/`path`/`expires`) = built-in selector; `storage:` (a class instance/reference with `setItem`/`getItem` methods) = custom adapter. Read what's passed — they're different keys with different meanings.
+
+### Detection in mixed/unknown codebases
+A codebase mid-migration may have BOTH v5 and v6 surfaces. Detect both: look for `setKeyValueStorage` (v6), `cookieStorage:` inside `Amplify.configure({ Auth: {...} })` (v5 built-in selector), and `storage:` inside the same (v5 custom class). Report the version explicitly with every storage finding.
+
+### Important caveat (both versions)
+`setKeyValueStorage` (v6) and the `storage:` class (v5) override storage for the **TokenStore only**. The `identityId` (Cognito Identity Pool) is held in a separate `IdentityIdStore` that still uses `localStorage`. "Owned storage" is a real signal but is not a complete storage swap if Identity Pools are in use. Note this in the finding.
 
 ## Refresh and owned-behavior entry points
 - **Refresh**: `fetchAuthSession()` refreshes silently and automatically when tokens are near expiry (this is the inherited magic); `fetchAuthSession({ forceRefresh: true })` forces it. A bare `fetchAuthSession()` sprinkled across app code with no 401-interceptor/single-flight ownership is the inherited-refresh signal. The silent refresh depends on tokens being readable by JS — it breaks on a move to HttpOnly cookies.

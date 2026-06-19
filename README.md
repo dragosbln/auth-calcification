@@ -52,6 +52,16 @@ cd auth-calcification
 claude --plugin-dir ./skill/auth-calcification-audit
 ```
 
+## Recommended models
+
+The skill is verified against the following Claude tiers, based on real-world runs on production codebases:
+
+- **Recommended: Opus 4.7 or higher**, or **Sonnet 4.6 or higher.** Reliable recall on version-specific configuration patterns (e.g., Amplify v5 vs v6 storage APIs), accurate locate→confirm discipline, and consistent adherence to the no-time-estimate rule.
+- **Acceptable with caveats: Sonnet 4.5.** Known recall gaps on alternative-pattern detection — in testing, the v5 cookie-storage pattern was missed because the model only searched for the v6 API. If you run on Sonnet 4.5 or lower, the skill detects this and prepends a model disclaimer to the report.
+- **Not recommended: Haiku 4.5 or lower.** The locate→confirm discipline and the multi-pattern verification rules need careful instruction-following that smaller tiers tend to short-circuit.
+
+The skill self-reports its model in the report metadata (`Model used (self-reported)`). Self-identification is imperfect — verify the field and correct it if needed before circulating the report.
+
 ## Usage
 
 ### Basic usage (interactive, default)
