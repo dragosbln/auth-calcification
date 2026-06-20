@@ -88,16 +88,21 @@ Use this for CI runs, batch audits, or when you want findings without being prom
 1. **Detect vendors** (reads `package.json`, loads matching profiles)
 2. **Run mechanical pass** (locate → confirm for each signal)
 3. **Interview** (if `--interactive=true`, default) — asks likelihood/cost questions
-4. **Produce full report** (markdown, saved to `_audit-output.md` or displayed inline)
+4. **Produce two artifacts** in the target directory:
+   - `auth-calcification-audit-summary.md` — a one-screen summary (posture, headline finding, a 5-row scorecard, top moves, and what only you can decide). **This is the lead** — it opens as a preview when the run finishes.
+   - `auth-calcification-audit-report.md` — the full report the summary is distilled from: Coverage, Boundary Assessment (4 signals), Findings by Axis (4 axes with evidence), Migration-readiness, Prioritized Backlog, and Judgment Calls.
 
-**Output:** A report with Summary, Coverage (what was/wasn't assessed), Boundary Assessment (4 signals), Findings by Axis (4 axes with evidence), Judgment Calls (questions only you can answer), and optionally a Prioritized Backlog (if you ran interactively and answered the questions).
+The summary is engineered to be skimmed first; open the full report when you want the evidence and per-axis detail.
 
 ### Example output
 
 See worked examples:
-- [`fixtures/calcified-cognito/_audit-output.md`](fixtures/calcified-cognito/_audit-output.md) — the "before" (everything calcified)
-- [`fixtures/bounded-cognito/_audit-output.md`](fixtures/bounded-cognito/_audit-output.md) — the "after" (well-bounded)
-- [`fixtures/mixed-edge-cases/_audit-output.md`](fixtures/mixed-edge-cases/_audit-output.md) — real-world complexity (multi-vendor, mid-migration)
+- [`fixtures/calcified-cognito/auth-calcification-audit-summary.md`](fixtures/calcified-cognito/auth-calcification-audit-summary.md) — the "before" (everything calcified)
+- [`fixtures/calcified-cognito/auth-calcification-audit-report.md`](fixtures/calcified-cognito/auth-calcification-audit-report.md) — the "before" (everything calcified)
+- [`fixtures/bounded-cognito/auth-calcification-audit-summary.md`](fixtures/bounded-cognito/auth-calcification-audit-summary.md) — the "after" (well-bounded)
+- [`fixtures/bounded-cognito/auth-calcification-audit-report.md`](fixtures/bounded-cognito/auth-calcification-audit-report.md) — the "after" (well-bounded)
+- [`fixtures/mixed-edge-cases/auth-calcification-audit-summary.md`](fixtures/mixed-edge-cases/auth-calcification-audit-summary.md) — real-world complexity (multi-vendor, mid-migration)
+- [`fixtures/mixed-edge-cases/auth-calcification-audit-report.md`](fixtures/mixed-edge-cases/auth-calcification-audit-report.md) — real-world complexity (multi-vendor, mid-migration)
 
 ## Supported vendors
 

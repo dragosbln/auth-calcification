@@ -5,6 +5,7 @@ Fill this exactly. Every section is load-bearing for honesty: the metadata makes
 **Important framing rules:**
 - **No time estimates anywhere.** Cost is qualitative — **low**, **moderate**, or **high**, each grounded in concrete mechanical evidence. Never write "1 hour," "2 days," "3 dev-weeks," etc. (SKILL.md non-negotiable #5.)
 - **No applicable code.** Tiny illustrative snippets (≤5 lines) are allowed if clearly framed as illustration, not as a patch. The skill does not produce edits to auth code.
+- **Every file reference is a clickable link.** No bare `file:line` text. Write `[src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8)` — display is the human-readable `path:line`; href uses `#L<line>` so the link works in VS Code's preview and on GitHub. (`path:line` in the href is a Claude Code chat-only convention; it breaks in saved markdown. See SKILL.md "Link every file reference".)
 - **If the model self-report (SKILL.md Phase 0) triggers the disclaimer condition**, prepend the disclaimer as a blockquote at the top of the Summary section.
 
 If you are running **without a human to answer the interview**, stop after *Findings* and *Judgment calls for you*: emit those, skip *Prioritized backlog* and the likelihood/cost ranking, and state plainly that prioritization needs the maintainer's input.
@@ -58,7 +59,7 @@ For each axis: the observation, the evidence, and the recommended seam (in prose
 
 ### Token storage
 - **Observation:** `<inherited default / custom adapter / built-in selector — name the version (e.g., v5 cookieStorage selector vs v6 setKeyValueStorage)>`
-- **Evidence:** `<file:line …>`
+- **Evidence:** `<linked file:line — e.g. [src/config/amplify.ts:119](src/config/amplify.ts#L119)>`
 - **Recommended seam:** `<the bounded shape from the methodology>`
 - **Likelihood × cost:** `<only if provided by the maintainer; otherwise "see Judgment calls">`
 

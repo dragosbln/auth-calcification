@@ -122,21 +122,34 @@ Fill `assets/report-template.md` with: report metadata (Date, Vendor profile(s),
 
 **Code in the report:** Describe seams in prose. Optional: tiny illustrative snippets (≤5 lines) clearly framed as *illustration, not a patch*. Do not write applicable code; the skill does not produce edits to auth code (non-negotiable #3).
 
+**Link every file reference (both artifacts).** A `file:line` written as bare text is dead weight in a rendered markdown file. Every file and `file:line` reference — in the report's evidence lines, coverage paths, backlog scope, AND in the summary's scorecard anchors and headline — must be a **clickable markdown link**:
+- Format: `[<display>](<href>)`, where `<display>` is the human-readable `path:line` (e.g. `src/lib/auth-helpers.ts:8`) and `<href>` uses the **`#L<line>`** convention so the link works in VS Code's markdown preview AND on GitHub — e.g. `[src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8)`. The `path:line` form in the href is a Claude Code chat-only convention; in a saved markdown file it produces broken links in VS Code and GitHub.
+- Because both artifacts are saved at the **root of the audited scope**, express hrefs relative to that root (the same root your findings already cite). A reference to the sibling report/summary file is just its filename: `[auth-calcification-audit-report.md](auth-calcification-audit-report.md)`.
+- A range or whole-file reference drops the line suffix: `[src/auth/](src/auth/)`.
+- No bare `path:line` text anywhere in either file. If you cite it, link it.
+
 Prioritize **only** with the maintainer's inputs; show which inputs were theirs. Recommend seams; don't apply them.
 
-**Where to save the report.**
+The skill produces **two artifacts, in this order**: the full report first, then a summary **distilled from the report**. Generate them in that order — the summary must contain nothing that isn't in the report, and every number/anchor in the summary must match the report.
 
-Save the completed report to a file in the target directory:
+**Artifact 1 — the full report.** Fill `assets/report-template.md` as described above. Save to the target directory:
 - Default path: `<target>/auth-calcification-audit-report.md`
-- If that path already exists, save as `<target>/auth-calcification-audit-report-2.md`, `-3.md`, etc. — use the next available integer. Do NOT overwrite an existing report; the previous run is the maintainer's record.
-- Do not negotiate the path with the user mid-flow; the convention above is deterministic.
+- If that path already exists, save as `<target>/auth-calcification-audit-report-2.md`, `-3.md`, etc. — next available integer. Do NOT overwrite; the previous run is the maintainer's record.
 
-After saving, output to chat **only**:
-1. One line: `Saved to <path>.`
-2. One short paragraph (≤4 sentences): the top finding and the one or two most consequential implications.
-3. One line pointing the user to the file: `Read the full report at <path> for boundary assessment, per-axis findings, migration-readiness, and the prioritized backlog.`
+**Artifact 2 — the summary.** Distill `assets/summary-template.md` from the report you just wrote. This is the lead artifact — the one the maintainer reads first and the one that earns or loses their trust. Save it alongside the report:
+- Default path: `<target>/auth-calcification-audit-summary.md`
+- If that path already exists, use the next available integer (`-2.md`, etc.). Keep the suffix aligned with the report (if the report became `-report-2.md`, the summary is `-summary-2.md`).
 
-**Do not** re-emit the report in chat. **Do not** summarize every axis. The file is the artifact; the chat is the pointer.
+Do not negotiate either path with the user mid-flow; the convention is deterministic.
+
+**Model disclaimer:** if the Phase 0 self-report triggered the disclaimer condition, prepend it to **both** the report Summary and the top of the summary file.
+
+**Presentation — chat output for Phase 3:**
+- Do **not** print the report or the summary into chat. Do **not** recap findings axis-by-axis.
+- After both files are saved, **open the summary file as a preview** (so it renders directly for the user) and stop. The summary is the lead; the report is the deep-dive it points to.
+- A single trailing line is acceptable only if a preview cannot be surfaced: `Summary → <summary path> · Full report → <report path>`.
+
+The files are the artifacts; the chat is not a second copy of them.
 
 ## Chat verbosity discipline (governs all phases)
 
@@ -151,7 +164,7 @@ The chat output during a run should be sparse. Default to silence; speak only at
 
 **During Phase 2:** ask one `AskUserQuestion` at a time. Between questions: brief acknowledgments (≤1 sentence). No findings recap — the recap is the report.
 
-**During Phase 3:** see the "Where to save the report" block above. No findings dump.
+**During Phase 3:** write both files (report, then summary distilled from it), then open the summary as a preview. No findings dump in chat. See the Phase 3 "Presentation" block above.
 
 **Never** describe what you are about to do in chat. Just do it.
 
@@ -160,7 +173,8 @@ The chat output during a run should be sparse. Default to silence; speak only at
 - `references/detection-playbook.md` — how to detect each signal from a profile (the mechanical pass).
 - `references/vendor-profile-schema.md` — the structure every profile follows; read this to add a provider.
 - `vendors/*.md` — per-provider knowledge (currently `amplify-cognito.md`, `auth0.md`).
-- `assets/report-template.md` — the output structure.
+- `assets/report-template.md` — the full report structure (artifact 1).
+- `assets/summary-template.md` — the one-screen summary distilled from the report (artifact 2, the lead).
 
 ## Common mistakes to avoid
 - **Grepping and stopping.** A text match is a candidate; the finding requires reading the code around it. Skipping the confirm step produces the shallow checklist this skill is meant to replace.
