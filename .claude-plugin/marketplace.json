@@ -9,7 +9,7 @@
       "name": "auth-calcification-audit",
       "source": "./skill/auth-calcification-audit",
       "description": "Audits codebases for authentication calcification risk — how tightly auth is wired to vendor defaults such that future changes (storage, refresh, provider, authorization) would be expensive. Produces evidence-backed reports with prioritized remediation backlogs. Escalates judgment calls rather than faking them.",
-      "version": "1.0.2",
+      "version": "1.2.0",
       "category": "security",
       "keywords": ["security", "audit", "authentication", "architecture", "calcification", "risk-assessment", "cognito", "auth0"]
     }
