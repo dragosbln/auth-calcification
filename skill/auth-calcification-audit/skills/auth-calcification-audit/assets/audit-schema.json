@@ -1,0 +1,469 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "auth-calcification-audit.schema.json",
+  "title": "Auth Calcification Audit — canonical structured output",
+  "description": "The model of an audit run. Both markdown artifacts are rendered FROM this file: they may explain and synthesize beyond it, but may not state any claim (finding, status, anchor, count, ranking) that is not in it, and the renderer never re-reads the audited codebase. Every fact appears exactly once — counts are computed from arrays, ranking is array order, 'split' verdicts are derived by comparing per-vendor entries. Nothing in this schema names a specific vendor; vendor identity is data. Escape hatches: 'other' = pattern determined and understood but not in the current vocabulary (empirical taxonomies only; requires a note and at least one cited presence finding — harness-enforced); 'undetermined' = could not be determined (any detected verdict; requires a note and a paired coverage.gaps entry — harness-enforced). Never round an unknown to the nearest determined value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "meta", "vendors", "coverage", "findings",
+               "boundary", "axes", "interview", "judgment_calls", "backlog",
+               "migration_readiness", "synthesis"],
+  "properties": {
+
+    "schema_version": { "const": "1.0" },
+
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "date", "skill_version", "model_self_reported", "disclaimer_fired", "mode"],
+      "properties": {
+        "scope":  { "type": "string", "description": "Repo or directory audited, as shown in the report title." },
+        "date":   { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "skill_version": { "type": "string", "description": "From plugin.json — makes every output traceable to the skill version that produced it." },
+        "model_self_reported": { "type": "string", "description": "Phase 0 self-report, verbatim. Imperfect by design; the human verifies." },
+        "disclaimer_fired": { "type": "boolean", "description": "Whether the Phase 0 disclaimer condition triggered. Stored (not derived) because the condition includes 'uncertain about the model', which the JSON cannot capture; the harness asserts consistency with model_self_reported where it can." },
+        "mode": { "enum": ["interactive", "non-interactive"] }
+      }
+    },
+
+    "vendors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "detected", "profile"],
+        "properties": {
+          "id":       { "$ref": "#/$defs/vendorId", "description": "Slug used as the key in boundary, axes.per_vendor, and findings." },
+          "detected": { "type": "string", "description": "Human-readable name + version as detected (e.g. from package.json)." },
+          "sdk_version": { "type": "string", "description": "Version-qualified detection where the profile distinguishes versions (a finding stated without version qualification is incomplete — playbook). Omit only if genuinely undeterminable." },
+          "profile":  { "type": ["string", "null"], "description": "Profile filename loaded from vendors/, or null for detected-but-unprofiled. INVARIANT (harness): profile == null ⇒ this vendor appears in coverage.gaps and in NO boundary or axis assessment — a gap, never a silent drop." },
+          "profile_verified": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "The profile's own verification date — the report metadata cites it, so the renderer needs it here (fresh-eyes rule). Include whenever profile is non-null." }
+        }
+      }
+    },
+
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comprehensive", "sampled", "gaps"],
+      "description": "What 'no finding' means depends entirely on this section. A clean-looking axis is only honest next to a populated coverage record.",
+      "properties": {
+        "comprehensive": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": false,
+            "required": ["path", "reason"],
+            "properties": {
+              "path":   { "$ref": "#/$defs/repoPath" },
+              "reason": { "type": "string", "description": "Why this was read in full (boundary module, config file, profile names it load-bearing…)." } } }
+        },
+        "sampled": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": { "$ref": "#/$defs/repoPath", "description": "Path or glob swept via grep + confirm. Counts from here are confirmed hits, not exhaustive reads — the renderer must qualify them accordingly." },
+              "note": { "type": "string" } } }
+        },
+        "gaps": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": false,
+            "required": ["reason"],
+            "properties": {
+              "reason": { "type": "string", "description": "Unparseable file, dynamic import, generated code, vendor without a profile, verdict recorded as 'undetermined'…" },
+              "path":   { "$ref": "#/$defs/repoPath" },
+              "vendor": { "$ref": "#/$defs/vendorId", "description": "Set when the gap concerns a specific vendor (e.g. unprofiled vendor, undetermined verdict on that vendor's surface)." } } }
+        }
+      }
+    },
+
+    "findings": {
+      "type": "array",
+      "description": "THE canonical finding set — one flat array. Boundary signals, axes, backlog, and the headline all reference findings by id; a finding is never duplicated into the structures that cite it.",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+
+    "boundary": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Keyed by vendor id — never a single collapsed verdict. A mid-migration codebase reads 'vendorA: present / vendorB: absent'; 'split' is derived by comparing entries, never stored. Every profiled vendor must have an entry (harness).",
+      "propertyNames": { "$ref": "#/$defs/vendorId" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["b1_anti_corruption", "b2_injected", "b3_contract_tested", "b4_client_server_split"],
+        "properties": {
+          "b1_anti_corruption":     { "$ref": "#/$defs/signalAssessment" },
+          "b2_injected":            { "$ref": "#/$defs/signalAssessment" },
+          "b3_contract_tested":     { "$ref": "#/$defs/signalAssessment" },
+          "b4_client_server_split": { "$ref": "#/$defs/signalAssessment" }
+        }
+      }
+    },
+
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage", "refresh", "identity_provider", "authorization"],
+      "properties": {
+        "storage":           { "$ref": "#/$defs/storageAxis" },
+        "refresh":           { "$ref": "#/$defs/refreshAxis" },
+        "identity_provider": { "$ref": "#/$defs/identityProviderAxis" },
+        "authorization":     { "$ref": "#/$defs/authorizationAxis" }
+      }
+    },
+
+    "interview": {
+      "description": "Null when Phase 2 did not run (non-interactive, no answers file). The human's RAW input, preserved verbatim so the likelihood mapping below is auditable — what they said is a different fact from what the skill concluded.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "answers"],
+          "properties": {
+            "source": { "enum": ["live", "file"], "description": "'live' = AskUserQuestion in-session; 'file' = pre-filled answers file. The renderer must note when answers came from a file, not a live maintainer." },
+            "answers": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "storage":           { "$ref": "#/$defs/interviewAnswer" },
+                "refresh":           { "$ref": "#/$defs/interviewAnswer" },
+                "identity_provider": { "$ref": "#/$defs/interviewAnswer" },
+                "authorization":     { "$ref": "#/$defs/interviewAnswer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    "judgment_calls": {
+      "type": "array",
+      "description": "The questions the audit deliberately did not answer. INVARIANT (harness): every axis whose likelihood is null appears here (in non-interactive mode, all four interview questions route here per SKILL.md); non-axis questions (unprofiled vendors, migration intent, true retrofit cost) use axis: null.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["axis", "question"],
+        "properties": {
+          "axis":        { "oneOf": [ { "$ref": "#/$defs/axisKey" }, { "type": "null" } ] },
+          "question":    { "type": "string" },
+          "context":     { "type": "string", "description": "Why this matters / what hinges on the answer." },
+          "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } }
+        }
+      }
+    },
+
+    "backlog": {
+      "description": "Null when ranking was not performed (no human likelihood input) — null means 'not produced', an empty array would mean 'ranked, nothing to recommend'. Array ORDER is the ranking; there is no rank field, so a stored rank can never disagree with position.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["task", "axes", "why", "finding_ids"],
+            "properties": {
+              "task":        { "type": "string", "description": "Introduce the boundary / write the adapter / add the contract suite / own refresh / localize claims / move to access tokens…" },
+              "axes":        { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/axisKey" } },
+              "why":         { "type": "string", "maxLength": 500, "description": "Traceable to mechanical evidence × the maintainer's stated input. Qualitative cost only — NEVER a duration." },
+              "finding_ids": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/findingId" } },
+              "scope_paths": { "type": "array", "items": { "$ref": "#/$defs/repoPath" }, "description": "What it touches structurally." }
+            }
+          }
+        }
+      ]
+    },
+
+    "migration_readiness": {
+      "description": "Findings read forward, only for changes the maintainer flagged. Null when no change was flagged (always null in non-interactive runs).",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["axis", "change", "progress", "remaining"],
+            "properties": {
+              "axis":     { "$ref": "#/$defs/axisKey" },
+              "change":   { "type": "string", "description": "The change the maintainer flagged, in their terms." },
+              "progress": { "enum": ["minimal", "partial", "substantial", "nearly_complete"], "description": "Qualitative boundary-completeness shorthand — never time-to-completion." },
+              "remaining": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "The specific missing pieces (contract suite, policy layer, N call sites…)." },
+              "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } }
+            }
+          }
+        }
+      ]
+    },
+
+    "synthesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["posture", "headline"],
+      "description": "The judgment layer. Written as prose in the markdown, but RECORDED here so (a) the agreement check can verify the rendered headline cites exactly these findings, and (b) a future judge layer can evaluate 'synthesis, not inventory' against a stable field.",
+      "properties": {
+        "posture":  { "type": "string", "maxLength": 120, "description": "One-phrase structural verdict, e.g. 'mid-migration, split per vendor'." },
+        "headline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "finding_ids"],
+          "properties": {
+            "text":        { "type": "string", "description": "The single most consequential finding or, preferably, a synthesis — mechanical fact × maintainer roadmap = named tension." },
+            "finding_ids": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/findingId" } }
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+
+    "vendorId":  { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "findingId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$",
+                   "description": "Stable, content-derived: <signal>-<vendor>-<short-descriptor>, e.g. 'storage-cognito-builtin-selector'. Never sequential ('finding-7')." },
+    "repoPath":  { "type": "string", "pattern": "^[^/]", "description": "Relative to the audited root — the same root the markdown links resolve against." },
+    "axisKey":   { "enum": ["storage", "refresh", "identity_provider", "authorization"] },
+    "signalKey": { "enum": ["b1_anti_corruption", "b2_injected", "b3_contract_tested", "b4_client_server_split",
+                            "storage", "refresh", "identity_provider", "authorization"] },
+
+    "evidenceAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "line", "quote"],
+      "properties": {
+        "file":  { "$ref": "#/$defs/repoPath" },
+        "line":  { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string", "minLength": 1,
+                   "description": "EXACT text copied from the cited line(s) — never paraphrased, never reconstructed from memory. The harness re-reads file:line and asserts this text appears there; a mismatch is a fabricated or mis-anchored finding." }
+      }
+    },
+
+    "finding": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "required": ["id", "vendor", "signals", "claim", "statement"],
+      "properties": {
+        "id":        { "$ref": "#/$defs/findingId" },
+        "vendor":    { "oneOf": [ { "$ref": "#/$defs/vendorId" }, { "type": "null" } ],
+                       "description": "Null only for vendor-independent structural findings (e.g. no SSR surface exists, app code branches on execution context)." },
+        "signals":   { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/signalKey" },
+                       "description": "Every boundary signal / axis this finding evidences — one leaked vendor type can serve both b1_anti_corruption and identity_provider. INVARIANT (harness): every assessment citing this finding must appear in this list, and vice versa." },
+        "claim":     { "enum": ["presence", "absence"] },
+        "statement": { "type": "string", "maxLength": 300,
+                       "description": "The one-line claim, plain language. Claim register only — explanation belongs in the rendered markdown, not here." },
+        "note":      { "type": "string" }
+      },
+      "oneOf": [
+        {
+          "description": "PRESENCE claim — something exists at one or more locations. Mechanically verifiable via every evidence anchor's quote.",
+          "properties": {
+            "claim":    { "const": "presence" },
+            "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidenceAnchor" },
+                          "description": "One finding, possibly several anchors (e.g. an import line + the call line that together constitute the pattern)." }
+          },
+          "required": ["evidence"]
+        },
+        {
+          "description": "ABSENCE claim — searched and not found. Unquotable by nature, so it carries its search record instead. INVARIANT (harness): checked_patterns must cover every alternative pattern the loaded profile lists for this concern — the playbook's 'negative findings demand a second look', made assertable.",
+          "properties": {
+            "claim":            { "const": "absence" },
+            "checked_patterns": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "searched":         { "type": "array", "items": { "type": "string" },
+                                  "description": "Paths/globs the search covered." }
+          },
+          "required": ["checked_patterns"]
+        }
+      ]
+    },
+
+    "signalAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "finding_ids"],
+      "properties": {
+        "status": { "enum": ["present", "partial", "absent", "not_applicable", "undetermined"],
+          "description": "'not_applicable' = the concern does not arise in this codebase (e.g. no SSR surface) — a DETERMINED fact, ideally backed by an absence finding. 'undetermined' = could not assess (unparseable, dynamic, out of reach) — must pair with a coverage.gaps entry (harness); never round to 'absent', that is the false all-clear." },
+        "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" },
+                         "description": "Every determined verdict (present/partial/absent) is evidence-backed — at least one finding, whether presence or absence. May be empty only for not_applicable/undetermined." },
+        "note": { "type": "string", "maxLength": 300, "description": "The key gap or nuance, e.g. 'present but no contract suite'." }
+      },
+      "allOf": [
+        {
+          "if":   { "properties": { "status": { "enum": ["not_applicable", "undetermined"] } } },
+          "then": { "required": ["note"] },
+          "else": { "properties": { "finding_ids": { "minItems": 1 } } }
+        }
+      ]
+    },
+
+    "likelihood": {
+      "enum": ["none", "low", "medium", "high", null],
+      "description": "The skill's NORMALIZED reading of the maintainer's answer ('Yes — planned' → high; 'No — locked in' → none). Null when unanswered. INVARIANT (harness): non-null ⇔ interview.answers has this axis, and the mapping matches the documented table. Never inferred from code."
+    },
+
+    "costEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "basis"],
+      "description": "The skill's MECHANICAL cost read — present in every run, human or not. Distinct from the maintainer's true retrofit cost, which is theirs to state.",
+      "properties": {
+        "level":       { "enum": ["low", "moderate", "high"] },
+        "basis":       { "type": "string", "maxLength": 400,
+                         "description": "Concrete mechanical justification: boundary quality, spread of coupling, confirmed call-site counts. NEVER a duration — no hours, days, weeks, sprints." },
+        "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } }
+      }
+    },
+
+    "interviewAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answer"],
+      "properties": {
+        "answer": { "type": "string", "description": "The chosen option label verbatim (or free text). The human's words, not a normalization." },
+        "notes":  { "type": "string", "description": "Anything else they said ('RBAC in Q3')." }
+      }
+    },
+
+    "storageAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["per_vendor", "recommended_seam", "likelihood", "cost_evidence"],
+      "properties": {
+        "per_vendor": {
+          "type": "object", "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/vendorId" },
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false,
+            "required": ["classification", "finding_ids"],
+            "properties": {
+              "classification": { "enum": ["vendor_default", "builtin_selector", "custom_adapter", "other", "undetermined"],
+                "description": "builtin_selector = a built-in persistence selector passed to the storage seam. It is NOT a custom adapter — classifying it as one is the look-alike trap (a serious accuracy error). vendor_default = nothing configured. 'other' = understood pattern outside this vocabulary (note + ≥1 presence finding required). 'undetermined' = could not determine (note + coverage.gaps entry required)." },
+              "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
+              "note":        { "type": "string", "maxLength": 300 }
+            },
+            "allOf": [
+              { "if":   { "properties": { "classification": { "const": "undetermined" } } },
+                "then": { "required": ["note"] },
+                "else": { "properties": { "finding_ids": { "minItems": 1 } } } },
+              { "if":   { "properties": { "classification": { "const": "other" } } },
+                "then": { "required": ["note"] } }
+            ]
+          }
+        },
+        "recommended_seam": { "type": "string", "description": "The bounded shape from the methodology, in prose." },
+        "likelihood":       { "$ref": "#/$defs/likelihood" },
+        "cost_evidence":    { "$ref": "#/$defs/costEvidence" },
+        "cost_confirmed":   { "enum": ["low", "moderate", "high", null], "default": null,
+                              "description": "The maintainer's own cost confirmation when supplied (answers file). The skill NEVER fills this itself." }
+      }
+    },
+
+    "refreshAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["per_vendor", "recommended_seam", "likelihood", "cost_evidence"],
+      "properties": {
+        "per_vendor": {
+          "type": "object", "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/vendorId" },
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false,
+            "required": ["classification", "finding_ids"],
+            "properties": {
+              "classification": { "enum": ["inherited", "partial", "owned", "other", "undetermined"],
+                "description": "'partial' = owned shape with gaps (no single-flight, no failure path) or ownership split across surfaces (server owned, client inherited) — the gaps themselves are separate findings. 'other'/'undetermined' per the escape-hatch rules (top-level description)." },
+              "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
+              "note":        { "type": "string", "maxLength": 300 }
+            },
+            "allOf": [
+              { "if":   { "properties": { "classification": { "const": "undetermined" } } },
+                "then": { "required": ["note"] },
+                "else": { "properties": { "finding_ids": { "minItems": 1 } } } },
+              { "if":   { "properties": { "classification": { "const": "other" } } },
+                "then": { "required": ["note"] } }
+            ]
+          }
+        },
+        "recommended_seam": { "type": "string" },
+        "likelihood":       { "$ref": "#/$defs/likelihood" },
+        "cost_evidence":    { "$ref": "#/$defs/costEvidence" },
+        "cost_confirmed":   { "enum": ["low", "moderate", "high", null], "default": null }
+      }
+    },
+
+    "identityProviderAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["per_vendor", "recommended_seam", "likelihood", "cost_evidence"],
+      "properties": {
+        "per_vendor": {
+          "type": "object", "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/vendorId" },
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false,
+            "required": ["classification", "finding_ids"],
+            "properties": {
+              "classification": { "enum": ["localized", "scattered", "other", "undetermined"],
+                "description": "Is provider-specific feature usage confined to the adapter, or spread across app code? 'other'/'undetermined' per the escape-hatch rules." },
+              "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
+              "note":        { "type": "string", "maxLength": 300 }
+            },
+            "allOf": [
+              { "if":   { "properties": { "classification": { "const": "undetermined" } } },
+                "then": { "required": ["note"] },
+                "else": { "properties": { "finding_ids": { "minItems": 1 } } } },
+              { "if":   { "properties": { "classification": { "const": "other" } } },
+                "then": { "required": ["note"] } }
+            ]
+          }
+        },
+        "recommended_seam": { "type": "string" },
+        "likelihood":       { "$ref": "#/$defs/likelihood" },
+        "cost_evidence":    { "$ref": "#/$defs/costEvidence" },
+        "cost_confirmed":   { "enum": ["low", "moderate", "high", null], "default": null }
+      }
+    },
+
+    "authorizationAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["per_vendor", "recommended_seam", "likelihood", "cost_evidence"],
+      "properties": {
+        "per_vendor": {
+          "type": "object", "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/vendorId" },
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false,
+            "required": ["claims_handling", "api_token_type", "finding_ids"],
+            "properties": {
+              "claims_handling": { "enum": ["inline_reads", "principal_without_policy", "policy_layer", "other", "undetermined"],
+                "description": "'principal_without_policy' = vendor claims are mapped to a domain Principal, but app code still reads Principal fields directly — a present boundary with a gap. 'other'/'undetermined' per the escape-hatch rules." },
+              "api_token_type": { "enum": ["access_token", "id_token", "opaque", "not_applicable", "other", "undetermined"],
+                "description": "What populates the outbound Authorization header. 'opaque' = a token the profile identifies as non-JWT/invalid for API auth (a determined fact, not an unknown). 'not_applicable' = no outbound API auth exists. 'undetermined' = could not determine — coverage.gaps pairing required." },
+              "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
+              "note":        { "type": "string", "maxLength": 300 }
+            },
+            "allOf": [
+              { "if": { "anyOf": [
+                  { "properties": { "claims_handling": { "enum": ["other", "undetermined"] } } },
+                  { "properties": { "api_token_type":  { "enum": ["other", "undetermined"] } } }
+                ] },
+                "then": { "required": ["note"] } },
+              { "if":   { "properties": { "claims_handling": { "const": "undetermined" },
+                                           "api_token_type":  { "const": "undetermined" } } },
+                "then": {},
+                "else": { "properties": { "finding_ids": { "minItems": 1 } } } }
+            ]
+          }
+        },
+        "recommended_seam": { "type": "string" },
+        "likelihood":       { "$ref": "#/$defs/likelihood" },
+        "cost_evidence":    { "$ref": "#/$defs/costEvidence" },
+        "cost_confirmed":   { "enum": ["low", "moderate", "high", null], "default": null }
+      }
+    }
+  }
+}
