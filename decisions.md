@@ -176,3 +176,30 @@ invocations must not assume an interactive shell; use the stable path
 to the step-5 headless runner. Caveat to carry: native type stripping does not
 type-check — types in harness scripts are documentation until a `tsc --noEmit` step is
 added (step 4).
+
+## D16 — Phase 3 restructure shipped: JSON → two rendered views (2026-07-07)
+
+SKILL.md Phase 3 now produces **three artifacts in order**: `auth-calcification-audit.json`
+(the source of truth, conforming to `assets/audit-schema.json`, same suffix-increment
+convention), then the report and the summary — each rendered **from the saved JSON alone**,
+never from the codebase or from memory. The summary renders from the JSON, not from the
+report (star topology, per D1). New **fork rule**: drift noticed mid-render is fixed in
+the JSON first, then re-rendered — the views never fork from the model.
+
+Supporting changes:
+- **Phase 1** now records verbatim evidence quotes, complete absence search records, and
+  per-axis cost_evidence (even non-interactive — per D10). Detection playbook updated to
+  match (quotes, search records, "output of the pass" names the JSON).
+- **Phase 2** records raw answers verbatim and normalizes likelihood via a **fixed
+  documented mapping table** in SKILL.md — the table the harness asserts against (per the
+  schema's likelihood invariant).
+- **Templates became view-specs**: placeholders now name the JSON nodes they render from;
+  report gains Skill version + link-to-JSON metadata lines; "Likelihood × cost" split into
+  Cost evidence (always) / Likelihood (interview only); migration-readiness "~X%" replaced
+  with the qualitative progress vocabulary; judgment-calls section states the
+  all-four-axes rule; backlog states array-order-is-rank.
+- **Version bump 1.2.0 → 1.3.0** (plugin.json + marketplace.json) — new output artifact
+  is a feature-level change.
+- Committed fixture outputs are now stale by design (they predate the JSON artifact and
+  have known-wrong anchors, see D6) — they get regenerated during the step-5 headless
+  spike rather than hand-fixed.
