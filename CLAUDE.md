@@ -1,8 +1,6 @@
 # Claude Code instructions for this repo
 
-Read **`HANDOFF.md`** first. It tells you where the build is and what to do next.
-
-Then read **`BUILD-PLAN.md`** before writing any code.
+Read **`decisions.md`** first — the running log of design decisions (with rationale) for the current build thread: the testing layer. Its last entries tell you where the build is.
 
 ## The four non-negotiables (these are the product)
 
@@ -16,11 +14,11 @@ If any task seems to require breaking one of these, stop and surface it.
 ## Repo orientation
 
 - `methodology.md` — the IP. Source of truth for what every signal means.
-- `BUILD-PLAN.md` — phased execution plan with done-when checks and failure modes.
-- `HANDOFF.md` — current state of the build, decisions already made, what to do next.
+- `decisions.md` — design-decision log for the testing layer, with rationale. Newest at the bottom.
 - `skill/auth-calcification-audit/` — the installable skill (SKILL.md + references/ + vendors/ + assets/).
+  - `assets/audit-schema.json` — the canonical output schema (JSON is the source; both markdowns are rendered views of it).
 - `fixtures/` — synthetic test apps; per-fixture READMEs explain expectations.
-- `docs/source-brief.md` — original owner brief; voice reference for the eventual article.
+- `harness/` — external test tooling (never packaged with the plugin). `golden/` holds hand-authored expected JSON per fixture.
 
 ## Hard invariant
 
