@@ -237,3 +237,72 @@ CLI (`check.ts`):
 
 Still missing from the harness (later steps): per-fixture expectation files (step 6),
 the headless runner (step 5), cross-format agreement check (step 7).
+
+## D18 — Headless invocation solved; tracer bullet landed (2026-07-08)
+
+The handoff's biggest unresolved question ("how do you invoke the skill headlessly?")
+is answered: **`claude -p` with `--plugin-dir <repo>/skill/auth-calcification-audit`** —
+it loads the real plugin package (plugin.json + skills layout), so the test exercises
+exactly what users install, not a copied approximation.
+
+`harness/run_fixture.ts` is the runner: copies the fixture to a fresh workspace under
+`harness/runs/<id>/` (committed fixtures untouched; old artifacts excluded so runs start
+clean), spawns claude headless (non-interactive prompt, `--permission-mode
+bypassPermissions` — acceptable in a throwaway copy of synthetic code; CI should narrow
+this), harvests the three artifacts, validates the JSON through both harness layers with
+quotes verified against the exact code the model audited. `runs/` is gitignored.
+
+Supporting decision: **skill version now lives in SKILL.md frontmatter** (`version:
+1.3.0`) because that's the only place the model can reliably read it at run time —
+`meta.skill_version` sources from there; `lint_versions.ts` (in `npm test`) keeps
+plugin.json / marketplace.json / SKILL.md in sync.
+
+**First tracer-bullet run (calcified-cognito, default model = Opus 4.8): PASSED
+end-to-end on the first attempt.** 488s, 33 turns, $2.75. All three artifacts produced;
+shape valid; all invariants pass — including I4: every one of 11 findings' quotes
+verifies verbatim against the fixture source. Recall eyeball: every designed trap hit
+(leaky facade, AuthSession in app code, direct imports, vendor-mocked tests + no
+contract suite, default localStorage, bare refresh, inline cognito:groups claims,
+fetchUserAttributes spread, ID-token-for-API). The storage absence finding carries a
+five-pattern search record spanning v5+v6 APIs and the look-alike selectors — the
+original real-run localStorage bug is now structurally unrepeatable in silence.
+Non-negotiables held: likelihood all null, backlog/interview/migration all null,
+judgment calls cover all four axes, disclaimer correctly not fired for Opus 4.8.
+
+Committed calcified-cognito outputs replaced with the verified run artifacts (per D16);
+re-validated against the committed fixture path. The other three fixtures remain stale —
+regenerating them is ~3 runs × ~$3 and belongs with step 6, where their expectation
+files get written.
+
+Cost/latency datapoint for CI planning: one fixture run ≈ 8 min, ≈ $2.75.
+
+## D19 — Pinned test model + the free slice runs on every commit (2026-07-08)
+
+**Default test model = Opus 4.7** (`claude-opus-4-7`), pinned in run_fixture.ts —
+the skill's minimum verified tier, so live tests exercise the weakest model we
+recommend rather than whatever the CLI defaults to (the D18 spike ran on Opus 4.8 by
+accident of defaults). `--model` overrides for matrix runs. Partially resolves the
+D14 "model matrix vs pinned" question: pinned default now, matrix later.
+
+**Pre-commit hook via `core.hooksPath .githooks`** — husky's job without the
+dependency: the hook script is committed at `.githooks/pre-commit`, and
+`harness/package.json`'s `prepare` script sets `git config core.hooksPath .githooks`
+on every `npm install`, so fresh clones self-install it. Escape hatch:
+`git commit --no-verify`.
+
+**What runs free at commit time** (the whole `npm test` chain — no LLM calls,
+~2–3s, and only when `harness/`, `skill/`, `fixtures/`, or `.claude-plugin/` files
+are staged; docs-only commits skip in ~10ms):
+- `typecheck` — tsc strict over the harness (runs/ workspaces excluded — fixture
+  code is not harness code).
+- `lint` — the three-way version sync (plugin.json / marketplace.json / SKILL.md).
+- `check` (new `check_all.ts`) — golden file + EVERY committed fixture audit JSON
+  validated through both layers against their fixture source. The quiet killer
+  feature: editing fixture source now breaks the commit if it invalidates committed
+  anchors (I4), instead of silently rotting them — the committed-report bug class
+  from D6, guarded at the door. Self-extending as fixtures gain JSON artifacts.
+- `mutants` — all 14, layer-attributed, so a schema edit that silently loosens
+  validation (or a checker regression) fails the commit that introduces it.
+
+What never runs at commit time: `run_fixture.ts` (live LLM runs — money and minutes;
+manual or CI-scheduled only).

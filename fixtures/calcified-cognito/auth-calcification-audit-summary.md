@@ -1,24 +1,24 @@
-## Auth Calcification — Summary · `fixtures/calcified-cognito`
+## Auth Calcification — Summary · `calcified-cognito`
 
-**AWS Amplify v6 / Cognito.** Run on Opus 4.7, non-interactive.
+**AWS Amplify v6 (Amazon Cognito)** — `aws-amplify ^6.6.0`, a client-only React SPA. Run on Claude Opus 4.8 (self-reported), non-interactive.
 
-**Posture: heavily calcified.** No real boundary exists — the [src/lib/auth-helpers.ts](src/lib/auth-helpers.ts) module looks like a wrapper but hands the vendor's `AuthSession` and `AuthUser` types straight back to callers, so the vendor's shape is load-bearing across the app. Every one of the four axes is inherited or scattered. *(High confidence: all 7 source files read in full; no coverage gaps.)*
+**Posture: heavily calcified — no boundary; the vendor's shape leaks across all four axes.** There is no `AuthPort`, vendor types leak into components and pages, auth is imported directly everywhere, and the only test mocks the vendor. *(High confidence: every source file was read in full; nothing sampled or skipped.)*
 
-**Headline:** The vendor's session type and claim names have leaked into application code in 5+ places — `AuthSession` is a component's state type ([src/components/UserBadge.tsx:11](src/components/UserBadge.tsx#L11)), `cognito:groups` is read inline in two separate components ([src/components/UserBadge.tsx:18](src/components/UserBadge.tsx#L18), [src/components/AdminPanel.tsx:15](src/components/AdminPanel.tsx#L15)), and the **ID token** authorizes every API call ([src/api/client.ts:15](src/api/client.ts#L15)). There is no single place to change any of these — each is reached for directly at the call site. That's the definition of calcified: a storage move, a provider swap, or an authz-model change would each touch scattered files, not one adapter.
+**Headline:** The one file that looks like a seam — [src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8) — hands back Amplify's `AuthSession` unchanged, so the vendor's shape reaches every caller. Combined with the **ID token** (not the access token) going out as the API `Authorization` header at [src/api/client.ts:17](src/api/client.ts#L17), both a provider swap and an authorization-model change are cross-cutting rewrites today, not local edits.
 
 | Signal | Status | Anchor |
 |---|---|---|
-| Boundary | Absent — leaky facade, no `AuthPort`, no contract suite | [src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8) |
-| Storage | Inherited default (localStorage) — no v6 `setKeyValueStorage`, no v5 `cookieStorage:`/`storage:` either | [src/lib/amplify-config.ts:5](src/lib/amplify-config.ts#L5) |
-| Refresh | Inherited — bare `fetchAuthSession()`, no 401/single-flight/failure path | [src/api/client.ts:14](src/api/client.ts#L14) |
-| Provider | Scattered — `cognito:groups`, `fetchUserAttributes`, `custom:*` across 3 files | [src/pages/Profile.tsx:7](src/pages/Profile.tsx#L7) |
-| Authorization | Inline claim reads + hard-coded roles; **ID token for API** | [src/api/client.ts:15](src/api/client.ts#L15) |
+| Boundary | absent — leaky facade, no `AuthPort`, no contract suite | [src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8) |
+| Storage | inherited default (`localStorage`), Amplify v6 — no `setKeyValueStorage` | [src/lib/amplify-config.ts:5](src/lib/amplify-config.ts#L5) |
+| Refresh | inherited — bare `fetchAuthSession()`, no single-flight, no failure path | [src/api/client.ts:14](src/api/client.ts#L14) |
+| Provider | scattered — `cognito:*` claims + `fetchUserAttributes` across 3 files | [src/components/UserBadge.tsx:18](src/components/UserBadge.tsx#L18) |
+| Authorization | inline claim/role reads; **ID token** authorizes the API | [src/api/client.ts:15](src/api/client.ts#L15) |
 
-**Top open questions** *(non-interactive run — no likelihood input, so findings are not ranked):*
-1. **Token storage** — is a move off localStorage (e.g. HttpOnly cookies) actually planned? The mechanical evidence shows no custom adapter; the question of whether one is worth writing depends on your roadmap.
-2. **Authorization model** — is RBAC/ABAC or an ID→access-token move on the roadmap? The 3 inline claim-reads and 5 hard-coded role strings are cheap to fix *now*, expensive once the model spreads.
-3. **Provider swap** — realistic in the next 12-24 months, or is the value purely defensive? Determines whether the boundary work is urgent or optional.
+**Top open questions** *(non-interactive run — no likelihood input was supplied, so there is no ranked backlog; these are the maintainer's calls):*
+1. **Storage move?** — Is a change to HttpOnly cookies / encrypted store on the table? It's also what breaks Amplify's silent refresh.
+2. **Own refresh?** — Is a 401-interceptor with single-flight + explicit expiry on the roadmap (usually downstream of a storage move)?
+3. **Provider swap / authz change?** — Is leaving Cognito realistic, and are RBAC/finer permissions or an ID→access-token move planned? Both determine whether the scattered coupling above is worth localizing now.
 
-**Only you can decide:** all four likelihood-of-change axes, the true retrofit cost in your system, and any org/ownership constraints. This was a non-interactive run, so nothing was prioritized — answer the questions above (or re-run interactively) to get a ranked backlog.
+**Only you can decide:** likelihood of change, the true retrofit cost (real call-site count, test coverage, bandwidth), and which backend contracts depend on the current ID-token choice. The audit found the coupling; whether and when to spend on the seams is yours. The skill will not invent those answers or rank without them.
 
-*Full evidence, per-axis findings, coverage, and recommended seams → [auth-calcification-audit-report.md](auth-calcification-audit-report.md)*
+*Full evidence, per-axis findings, coverage, and judgment calls → [auth-calcification-audit-report.md](auth-calcification-audit-report.md)*

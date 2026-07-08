@@ -19,7 +19,7 @@
       "properties": {
         "scope":  { "type": "string", "description": "Repo or directory audited, as shown in the report title." },
         "date":   { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-        "skill_version": { "type": "string", "description": "From plugin.json — makes every output traceable to the skill version that produced it." },
+        "skill_version": { "type": "string", "description": "From the `version` field in SKILL.md's frontmatter (kept in sync with plugin.json by a harness lint) — makes every output traceable to the skill version that produced it." },
         "model_self_reported": { "type": "string", "description": "Phase 0 self-report, verbatim. Imperfect by design; the human verifies." },
         "disclaimer_fired": { "type": "boolean", "description": "Whether the Phase 0 disclaimer condition triggered. Stored (not derived) because the condition includes 'uncertain about the model', which the JSON cannot capture; the harness asserts consistency with model_self_reported where it can." },
         "mode": { "enum": ["interactive", "non-interactive"] }

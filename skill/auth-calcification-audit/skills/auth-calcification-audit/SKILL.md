@@ -1,5 +1,6 @@
 ---
 name: auth-calcification-audit
+version: 1.3.0
 description: >-
   Audit a codebase for authentication calcification risk — how tightly its auth is
   wired to a vendor's defaults (token storage, refresh, identity provider,

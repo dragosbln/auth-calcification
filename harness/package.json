@@ -7,10 +7,13 @@
     "node": ">=23.6"
   },
   "scripts": {
-    "check": "node check.ts golden/mixed-edge-cases.audit.json ../fixtures/mixed-edge-cases",
+    "prepare": "git -C .. config core.hooksPath .githooks || true",
+    "check": "node check_all.ts",
     "mutants": "node mutants.ts",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && npm run check && npm run mutants"
+    "lint": "node lint_versions.ts",
+    "run:fixture": "node run_fixture.ts",
+    "test": "npm run typecheck && npm run lint && npm run check && npm run mutants"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

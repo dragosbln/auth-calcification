@@ -8,3 +8,6 @@ build/
 !.env.example
 .vscode/
 .idea/
+
+# harness run outputs (transient, one dir per headless run)
+harness/runs/
