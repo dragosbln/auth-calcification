@@ -203,3 +203,37 @@ Supporting changes:
 - Committed fixture outputs are now stale by design (they predate the JSON artifact and
   have known-wrong anchors, see D6) — they get regenerated during the step-5 headless
   spike rather than hand-fixed.
+
+## D17 — Deterministic harness: two fail-fast layers, mutation-verified (2026-07-07)
+
+`harness/` is now the real step-4 harness, structured as two validation layers behind one
+CLI (`check.ts`):
+
+- **Layer 1 — shape** (`lib/schema.ts`): ajv (draft 2020-12) validates against the
+  skill's `assets/audit-schema.json`, read from the skill package directly — never
+  copied, so the schema the tests enforce is byte-for-byte the schema that ships.
+- **Layer 2 — relations** (`lib/invariants.ts`): I1–I8 — referential integrity, verbatim
+  quotes re-checked against the audited codebase, non-negotiables as cross-field
+  implications, escape-hatch pairing, duration sweep. Runs ONLY if layer 1 passed
+  (fail-fast): invariant code assumes a well-formed document instead of
+  defensive-coding every access.
+- **Output contract** (parsed by mutants.ts and future CI): `SCHEMA …` = layer-1
+  violation, `ERROR I<n> …` = layer-2, exit 0 ⇔ clean.
+- **Type gate**: `tsc --noEmit` with `strict` + `erasableSyntaxOnly` — the compiler now
+  enforces both correctness and the "runs on plain Node, no build step" constraint
+  (types were documentation-only under bare type stripping, see D15). Shared document
+  types live in `lib/types.ts`, mirroring the JSON Schema (schema wins on drift).
+- **Mutation corpus doubled to 14, with layer attribution**: 7 shape mutants (bad enum,
+  missing required, undeclared property = the stored-counts rule, silent `other`,
+  absence-with-evidence = the discriminated union, evidence-less verdict, wrong
+  schema_version) + 7 relational mutants. `mutants.ts` asserts each is caught **in its
+  expected layer** — a wrong-layer catch fails the run, so the layering claim itself is
+  tested. `npm test` = typecheck + golden check + mutants.
+- First dependencies introduced (ajv, typescript, @types/node) — dev-only, harness-only,
+  never shipped with the plugin (D12 intact).
+- Dogfood catch: ajv strict mode flagged `minItems` without `type: "array"` in the
+  schema's conditional else-branches — fixed in the shipped schema, so any consumer's
+  strict validator stays quiet. The golden file passed its first formal shape validation.
+
+Still missing from the harness (later steps): per-fixture expectation files (step 6),
+the headless runner (step 5), cross-format agreement check (step 7).

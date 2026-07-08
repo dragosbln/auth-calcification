@@ -1,90 +1,29 @@
-#!/usr/bin/env node
 /**
- * Prototype of the harness invariant checker (build-plan step 4 preview).
+ * Layer 2 — RELATIONAL invariants.
  *
- * Checks the relational invariants JSON Schema cannot express, against a
- * candidate audit JSON + the audited codebase root. Zero dependencies —
- * runs on Node >= 23.6 via native type stripping:
+ * Everything JSON Schema cannot express: referential integrity between
+ * findings and the assessments that cite them, verbatim evidence quotes
+ * re-checked against the audited codebase, the non-negotiables as cross-field
+ * implications, escape-hatch pairing rules, and the no-durations sweep.
  *
- *   node check_invariants.ts <audit.json> <code-root>
- *
- * Exit code 0 = all invariants pass; 1 = at least one ERROR.
- * Formal JSON Schema (shape) validation is separate and comes with ajv in
- * the full harness; this file covers what a schema validator cannot see.
+ * This layer assumes the document already passed layer 1 (lib/schema.ts) —
+ * it reads fields without defensive existence checks on purpose. Run shape
+ * validation first; that's what the layering buys.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import process from "node:process";
-
-const AXES = ["storage", "refresh", "identity_provider", "authorization"] as const;
-type Axis = (typeof AXES)[number];
+import { AXES } from "./types.ts";
+import type { AuditDoc, Finding } from "./types.ts";
 
 const DURATION_RX =
   /\b\d+(\.\d+)?\s*(-\s*\d+(\.\d+)?\s*)?(hour|hr|day|week|sprint|month|dev-week|man-day|person-day)s?\b/i;
 
-interface EvidenceAnchor {
-  file: string;
-  line: number;
-  quote: string;
+export interface InvariantResult {
+  errors: string[];
+  warnings: string[];
+  findings: number;
+  references: number;
 }
-
-interface Finding {
-  id: string;
-  vendor: string | null;
-  signals: string[];
-  claim: "presence" | "absence";
-  statement: string;
-  note?: string;
-  evidence?: EvidenceAnchor[];
-  checked_patterns?: string[];
-  searched?: string[];
-}
-
-interface SignalAssessment {
-  status: "present" | "partial" | "absent" | "not_applicable" | "undetermined";
-  finding_ids: string[];
-  note?: string;
-}
-
-interface AxisPerVendor {
-  classification?: string;
-  claims_handling?: string;
-  api_token_type?: string;
-  finding_ids: string[];
-  note?: string;
-}
-
-interface AxisAssessment {
-  per_vendor: Record<string, AxisPerVendor>;
-  recommended_seam: string;
-  likelihood: string | null;
-  cost_evidence: { level: string; basis: string; finding_ids?: string[] };
-  cost_confirmed?: string | null;
-}
-
-interface AuditDoc {
-  schema_version: string;
-  meta: Record<string, unknown>;
-  vendors: Array<{ id: string; profile: string | null; [k: string]: unknown }>;
-  coverage: {
-    comprehensive: Array<{ path: string; reason: string }>;
-    sampled: Array<{ path: string; note?: string }>;
-    gaps: Array<{ reason: string; path?: string; vendor?: string }>;
-  };
-  findings: Finding[];
-  boundary: Record<string, Record<string, SignalAssessment>>;
-  axes: Record<Axis, AxisAssessment>;
-  interview: { source: "live" | "file"; answers: Record<string, { answer: string; notes?: string }> } | null;
-  judgment_calls: Array<{ axis: Axis | null; question: string; context?: string; finding_ids?: string[] }>;
-  backlog: Array<{ task: string; axes: Axis[]; why: string; finding_ids: string[]; scope_paths?: string[] }> | null;
-  migration_readiness: unknown[] | null;
-  synthesis: { posture: string; headline: { text: string; finding_ids: string[] } };
-}
-
-const errors: string[] = [];
-const warnings: string[] = [];
-const err = (msg: string) => void errors.push(msg);
-const warn = (msg: string) => void warnings.push(msg);
 
 function* walkStrings(node: unknown, path = "$"): Generator<[string, string]> {
   if (typeof node === "string") {
@@ -96,8 +35,11 @@ function* walkStrings(node: unknown, path = "$"): Generator<[string, string]> {
   }
 }
 
-function main(auditPath: string, codeRoot: string): void {
-  const doc: AuditDoc = JSON.parse(readFileSync(auditPath, "utf8"));
+export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const err = (msg: string) => void errors.push(msg);
+  const warn = (msg: string) => void warnings.push(msg);
 
   const findings = new Map<string, Finding>(doc.findings.map((f) => [f.id, f]));
 
@@ -251,16 +193,5 @@ function main(auditPath: string, codeRoot: string): void {
     if (m) err(`I8 duration language at ${path}: ...${m[0]}...`);
   }
 
-  console.log(`checked ${doc.findings.length} findings, ${refs.length} references`);
-  for (const w of warnings) console.log(`WARN  ${w}`);
-  for (const e of errors) console.log(`ERROR ${e}`);
-  if (errors.length === 0) console.log("ALL INVARIANTS PASS");
-  process.exit(errors.length ? 1 : 0);
+  return { errors, warnings, findings: doc.findings.length, references: refs.length };
 }
-
-const [auditPath, codeRoot] = process.argv.slice(2);
-if (!auditPath || !codeRoot) {
-  console.error("usage: node check_invariants.ts <audit.json> <code-root>");
-  process.exit(2);
-}
-main(auditPath, codeRoot);
