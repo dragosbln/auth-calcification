@@ -18,7 +18,7 @@ If any task seems to require breaking one of these, stop and surface it.
 - `skill/auth-calcification-audit/` — the installable skill (SKILL.md + references/ + vendors/ + assets/).
   - `assets/audit-schema.json` — the canonical output schema (JSON is the source; both markdowns are rendered views of it).
 - `fixtures/` — synthetic test apps; per-fixture READMEs explain expectations.
-- `harness/` — external test tooling (never packaged with the plugin). `golden/` holds hand-authored expected JSON per fixture.
+- `harness/` — external test tooling (never packaged with the plugin). `golden/` holds hand-authored expected JSON; `expectations/` holds per-fixture ground-truth assertions (and the bounded-pair portability spec). `npm test` runs the whole free suite; it also runs pre-commit via `.githooks/`.
 
 ## Hard invariant
 

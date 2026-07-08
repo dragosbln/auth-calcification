@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "meta": {
     "scope": "calcified-cognito",
     "date": "2026-07-08",
@@ -19,14 +19,38 @@
   ],
   "coverage": {
     "comprehensive": [
-      { "path": "package.json", "reason": "Vendor detection: dependency list read to identify aws-amplify v6." },
-      { "path": "src/lib/amplify-config.ts", "reason": "Configuration file and the token-storage seam the profile names as load-bearing." },
-      { "path": "src/lib/auth-helpers.ts", "reason": "The only candidate boundary/wrapper module — read in full to decide facade vs real boundary." },
-      { "path": "src/api/client.ts", "reason": "Outbound API auth layer — refresh, token type, and injection all determined here." },
-      { "path": "src/components/UserBadge.tsx", "reason": "App-layer component; read in full for vendor-type leaks and inline claim reads." },
-      { "path": "src/components/AdminPanel.tsx", "reason": "App-layer component; read in full for scattered claim/role reads." },
-      { "path": "src/pages/Profile.tsx", "reason": "Page-level code; read in full for provider-specific feature usage." },
-      { "path": "__tests__/auth.test.ts", "reason": "The only auth test; read in full to classify contract-suite vs vendor-mock." }
+      {
+        "path": "package.json",
+        "reason": "Vendor detection: dependency list read to identify aws-amplify v6."
+      },
+      {
+        "path": "src/lib/amplify-config.ts",
+        "reason": "Configuration file and the token-storage seam the profile names as load-bearing."
+      },
+      {
+        "path": "src/lib/auth-helpers.ts",
+        "reason": "The only candidate boundary/wrapper module — read in full to decide facade vs real boundary."
+      },
+      {
+        "path": "src/api/client.ts",
+        "reason": "Outbound API auth layer — refresh, token type, and injection all determined here."
+      },
+      {
+        "path": "src/components/UserBadge.tsx",
+        "reason": "App-layer component; read in full for vendor-type leaks and inline claim reads."
+      },
+      {
+        "path": "src/components/AdminPanel.tsx",
+        "reason": "App-layer component; read in full for scattered claim/role reads."
+      },
+      {
+        "path": "src/pages/Profile.tsx",
+        "reason": "Page-level code; read in full for provider-specific feature usage."
+      },
+      {
+        "path": "__tests__/auth.test.ts",
+        "reason": "The only auth test; read in full to classify contract-suite vs vendor-mock."
+      }
     ],
     "sampled": [],
     "gaps": []
@@ -35,55 +59,94 @@
     {
       "id": "boundary-cognito-leaky-facade",
       "vendor": "cognito",
-      "signals": ["b1_anti_corruption", "b2_injected"],
       "claim": "presence",
       "statement": "The lib/auth-helpers.ts 'wrapper' is a leaky facade: it re-exports vendor functions and returns Amplify's AuthSession/AuthUser unchanged.",
       "note": "Looks like a boundary and earns no credit as one — the vendor's shape passes straight through to every caller.",
       "evidence": [
-        { "file": "src/lib/auth-helpers.ts", "line": 6, "quote": "import { fetchAuthSession, getCurrentUser, signOut, AuthSession, AuthUser } from 'aws-amplify/auth';" },
-        { "file": "src/lib/auth-helpers.ts", "line": 8, "quote": "export async function getSession(): Promise<AuthSession> {" },
-        { "file": "src/lib/auth-helpers.ts", "line": 14, "quote": "export async function getUser(): Promise<AuthUser> {" }
+        {
+          "file": "src/lib/auth-helpers.ts",
+          "line": 6,
+          "quote": "import { fetchAuthSession, getCurrentUser, signOut, AuthSession, AuthUser } from 'aws-amplify/auth';"
+        },
+        {
+          "file": "src/lib/auth-helpers.ts",
+          "line": 8,
+          "quote": "export async function getSession(): Promise<AuthSession> {"
+        },
+        {
+          "file": "src/lib/auth-helpers.ts",
+          "line": 14,
+          "quote": "export async function getUser(): Promise<AuthUser> {"
+        }
       ]
     },
     {
       "id": "b1-cognito-authsession-in-app",
       "vendor": "cognito",
-      "signals": ["b1_anti_corruption"],
       "claim": "presence",
       "statement": "Amplify's AuthSession type crosses into app-layer component state and an exported function return type in UserBadge.tsx.",
       "evidence": [
-        { "file": "src/components/UserBadge.tsx", "line": 8, "quote": "import { fetchAuthSession, AuthSession } from \"aws-amplify/auth\";" },
-        { "file": "src/components/UserBadge.tsx", "line": 11, "quote": "const [session, setSession] = useState<AuthSession | null>(null);" },
-        { "file": "src/components/UserBadge.tsx", "line": 33, "quote": "export async function getCurrentSession(): Promise<AuthSession> {" }
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 8,
+          "quote": "import { fetchAuthSession, AuthSession } from \"aws-amplify/auth\";"
+        },
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 11,
+          "quote": "const [session, setSession] = useState<AuthSession | null>(null);"
+        },
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 33,
+          "quote": "export async function getCurrentSession(): Promise<AuthSession> {"
+        }
       ]
     },
     {
       "id": "b2-cognito-direct-imports",
       "vendor": "cognito",
-      "signals": ["b2_injected"],
       "claim": "presence",
       "statement": "Auth is imported directly from aws-amplify/auth and used inline at each call site — the API client and components — with no injected port.",
       "evidence": [
-        { "file": "src/api/client.ts", "line": 7, "quote": "import { fetchAuthSession } from 'aws-amplify/auth';" },
-        { "file": "src/api/client.ts", "line": 14, "quote": "const session = await fetchAuthSession();" },
-        { "file": "src/components/AdminPanel.tsx", "line": 7, "quote": "import { fetchAuthSession } from \"aws-amplify/auth\";" }
+        {
+          "file": "src/api/client.ts",
+          "line": 7,
+          "quote": "import { fetchAuthSession } from 'aws-amplify/auth';"
+        },
+        {
+          "file": "src/api/client.ts",
+          "line": 14,
+          "quote": "const session = await fetchAuthSession();"
+        },
+        {
+          "file": "src/components/AdminPanel.tsx",
+          "line": 7,
+          "quote": "import { fetchAuthSession } from \"aws-amplify/auth\";"
+        }
       ]
     },
     {
       "id": "b3-cognito-tests-mock-vendor",
       "vendor": "cognito",
-      "signals": ["b3_contract_tested"],
       "claim": "presence",
       "statement": "The only auth test mocks aws-amplify/auth and asserts on the vendor's AuthSession shape — it passes today and dies on migration.",
       "evidence": [
-        { "file": "__tests__/auth.test.ts", "line": 9, "quote": "vi.mock(\"aws-amplify/auth\", () => ({" },
-        { "file": "__tests__/auth.test.ts", "line": 28, "quote": "expect(session.tokens?.idToken?.payload[\"cognito:groups\"]).toContain(" }
+        {
+          "file": "__tests__/auth.test.ts",
+          "line": 9,
+          "quote": "vi.mock(\"aws-amplify/auth\", () => ({"
+        },
+        {
+          "file": "__tests__/auth.test.ts",
+          "line": 28,
+          "quote": "expect(session.tokens?.idToken?.payload[\"cognito:groups\"]).toContain("
+        }
       ]
     },
     {
       "id": "b3-cognito-no-contract-suite",
       "vendor": "cognito",
-      "signals": ["b3_contract_tested"],
       "claim": "absence",
       "statement": "No conformance/contract suite exists that tests the auth boundary independently of the vendor.",
       "checked_patterns": [
@@ -91,12 +154,14 @@
         "tests asserting on a domain Principal / AuthError shape rather than the vendor's AuthSession",
         "adapter-conformance tests exercising an injected port"
       ],
-      "searched": ["__tests__/**", "src/**"]
+      "searched": [
+        "__tests__/**",
+        "src/**"
+      ]
     },
     {
       "id": "b4-cognito-no-ssr-surface",
       "vendor": "cognito",
-      "signals": ["b4_client_server_split"],
       "claim": "absence",
       "statement": "There is no SSR/server auth surface, so no client/server split exists to absorb — the concern does not arise.",
       "checked_patterns": [
@@ -106,12 +171,14 @@
         "runWithAmplifyServerContext",
         "typeof window / execution-context branching to obtain auth"
       ],
-      "searched": ["src/**", "package.json"]
+      "searched": [
+        "src/**",
+        "package.json"
+      ]
     },
     {
       "id": "storage-cognito-default-localstorage",
       "vendor": "cognito",
-      "signals": ["storage"],
       "claim": "absence",
       "statement": "Token storage is left at the Amplify v6 default (browser localStorage) — no custom storage adapter or custom tokenProvider is configured.",
       "note": "Amplify v6 detected. Amplify.configure passes only the Cognito user-pool block; no storage customization anywhere.",
@@ -122,54 +189,93 @@
         "cookieStorage: { domain, path, expires, ... } inside Amplify.configure({ Auth }) [v5 built-in cookie selector]",
         "storage: <class> inside Amplify.configure({ Auth }) [v5 custom storage class]"
       ],
-      "searched": ["src/lib/amplify-config.ts", "src/**"]
+      "searched": [
+        "src/lib/amplify-config.ts",
+        "src/**"
+      ]
     },
     {
       "id": "refresh-cognito-inherited-bare-fetch",
       "vendor": "cognito",
-      "signals": ["refresh"],
       "claim": "presence",
       "statement": "Refresh is inherited vendor magic: a bare fetchAuthSession() in the axios request interceptor, with no single-flight dedup and no onSessionExpired failure path.",
       "note": "Amplify's silent refresh works only because tokens are JS-readable; it breaks the day storage moves to HttpOnly cookies.",
       "evidence": [
-        { "file": "src/api/client.ts", "line": 14, "quote": "const session = await fetchAuthSession();" }
+        {
+          "file": "src/api/client.ts",
+          "line": 14,
+          "quote": "const session = await fetchAuthSession();"
+        }
       ]
     },
     {
       "id": "idp-authz-cognito-inline-claims",
       "vendor": "cognito",
-      "signals": ["identity_provider", "authorization"],
       "claim": "presence",
       "statement": "Cognito-namespaced claims (cognito:groups) are read inline for authorization decisions, with hard-coded role strings, in two separate components.",
       "note": "Serves both the identity-provider axis (Cognito-specific claim surface in app code) and the authorization axis (inline claim/role reads, no policy layer).",
       "evidence": [
-        { "file": "src/components/UserBadge.tsx", "line": 18, "quote": "(session?.tokens?.idToken?.payload[\"cognito:groups\"] as string[]) ?? [];" },
-        { "file": "src/components/UserBadge.tsx", "line": 22, "quote": "const isAdmin = groups.includes(\"admin\");" },
-        { "file": "src/components/AdminPanel.tsx", "line": 15, "quote": "(session.tokens?.idToken?.payload[\"cognito:groups\"] as string[]) ?? [];" },
-        { "file": "src/components/AdminPanel.tsx", "line": 17, "quote": "setAllowed(groups.includes(\"admin\") || groups.includes(\"billing-admin\"));" }
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 18,
+          "quote": "(session?.tokens?.idToken?.payload[\"cognito:groups\"] as string[]) ?? [];"
+        },
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 22,
+          "quote": "const isAdmin = groups.includes(\"admin\");"
+        },
+        {
+          "file": "src/components/AdminPanel.tsx",
+          "line": 15,
+          "quote": "(session.tokens?.idToken?.payload[\"cognito:groups\"] as string[]) ?? [];"
+        },
+        {
+          "file": "src/components/AdminPanel.tsx",
+          "line": 17,
+          "quote": "setAllowed(groups.includes(\"admin\") || groups.includes(\"billing-admin\"));"
+        }
       ]
     },
     {
       "id": "idp-cognito-fetchuserattributes",
       "vendor": "cognito",
-      "signals": ["identity_provider", "b1_anti_corruption"],
       "claim": "presence",
       "statement": "Page-level code calls fetchUserAttributes directly, types state as the vendor's FetchUserAttributesOutput, and reads a custom: attribute inline.",
       "evidence": [
-        { "file": "src/pages/Profile.tsx", "line": 12, "quote": "const [attrs, setAttrs] = useState<FetchUserAttributesOutput | null>(null);" },
-        { "file": "src/pages/Profile.tsx", "line": 15, "quote": "fetchUserAttributes().then(setAttrs);" },
-        { "file": "src/pages/Profile.tsx", "line": 19, "quote": "const tenantId = attrs?.[\"custom:tenantId\"];" }
+        {
+          "file": "src/pages/Profile.tsx",
+          "line": 12,
+          "quote": "const [attrs, setAttrs] = useState<FetchUserAttributesOutput | null>(null);"
+        },
+        {
+          "file": "src/pages/Profile.tsx",
+          "line": 15,
+          "quote": "fetchUserAttributes().then(setAttrs);"
+        },
+        {
+          "file": "src/pages/Profile.tsx",
+          "line": 19,
+          "quote": "const tenantId = attrs?.[\"custom:tenantId\"];"
+        }
       ]
     },
     {
       "id": "authz-cognito-idtoken-for-api",
       "vendor": "cognito",
-      "signals": ["authorization"],
       "claim": "presence",
       "statement": "The ID token (not the access token) is attached as the outbound API Authorization header — authentication coupled to authorization.",
       "evidence": [
-        { "file": "src/api/client.ts", "line": 15, "quote": "const idToken = session.tokens?.idToken?.toString();" },
-        { "file": "src/api/client.ts", "line": 17, "quote": "config.headers.Authorization = `Bearer ${idToken}`;" }
+        {
+          "file": "src/api/client.ts",
+          "line": 15,
+          "quote": "const idToken = session.tokens?.idToken?.toString();"
+        },
+        {
+          "file": "src/api/client.ts",
+          "line": 17,
+          "quote": "config.headers.Authorization = `Bearer ${idToken}`;"
+        }
       ]
     }
   ],
@@ -177,22 +283,34 @@
     "cognito": {
       "b1_anti_corruption": {
         "status": "absent",
-        "finding_ids": ["boundary-cognito-leaky-facade", "b1-cognito-authsession-in-app", "idp-cognito-fetchuserattributes"],
+        "finding_ids": [
+          "boundary-cognito-leaky-facade",
+          "b1-cognito-authsession-in-app",
+          "idp-cognito-fetchuserattributes"
+        ],
         "note": "Vendor AuthSession / AuthUser / FetchUserAttributesOutput cross into component state, page state, and exported return types; the auth-helpers.ts wrapper returns AuthSession unchanged."
       },
       "b2_injected": {
         "status": "absent",
-        "finding_ids": ["boundary-cognito-leaky-facade", "b2-cognito-direct-imports"],
+        "finding_ids": [
+          "boundary-cognito-leaky-facade",
+          "b2-cognito-direct-imports"
+        ],
         "note": "Auth is imported directly from aws-amplify/auth at each call site (API client, components); there is no injected AuthPort."
       },
       "b3_contract_tested": {
         "status": "absent",
-        "finding_ids": ["b3-cognito-no-contract-suite", "b3-cognito-tests-mock-vendor"],
+        "finding_ids": [
+          "b3-cognito-no-contract-suite",
+          "b3-cognito-tests-mock-vendor"
+        ],
         "note": "No contract suite; the only auth test mocks the vendor and asserts on its shape."
       },
       "b4_client_server_split": {
         "status": "not_applicable",
-        "finding_ids": ["b4-cognito-no-ssr-surface"],
+        "finding_ids": [
+          "b4-cognito-no-ssr-surface"
+        ],
         "note": "Client-only React SPA; no SSR/server auth surface exists, so the client/server split does not arise."
       }
     }
@@ -202,7 +320,9 @@
       "per_vendor": {
         "cognito": {
           "classification": "vendor_default",
-          "finding_ids": ["storage-cognito-default-localstorage"],
+          "finding_ids": [
+            "storage-cognito-default-localstorage"
+          ],
           "note": "Amplify v6; no setKeyValueStorage or custom tokenProvider — default browser localStorage."
         }
       },
@@ -211,14 +331,18 @@
       "cost_evidence": {
         "level": "moderate",
         "basis": "Storage is unconfigured (default localStorage) and there is no boundary or storage seam to plug an adapter into, so the retrofit is introducing the seam plus config — contained, but the JS-readable-token dependency ties it to the refresh path.",
-        "finding_ids": ["storage-cognito-default-localstorage"]
+        "finding_ids": [
+          "storage-cognito-default-localstorage"
+        ]
       }
     },
     "refresh": {
       "per_vendor": {
         "cognito": {
           "classification": "inherited",
-          "finding_ids": ["refresh-cognito-inherited-bare-fetch"],
+          "finding_ids": [
+            "refresh-cognito-inherited-bare-fetch"
+          ],
           "note": "Bare fetchAuthSession() in the axios interceptor; no single-flight, no onSessionExpired."
         }
       },
@@ -227,14 +351,19 @@
       "cost_evidence": {
         "level": "moderate",
         "basis": "Refresh is a single bare fetchAuthSession() call site to own, but with no boundary present, adding single-flight and a failure path means introducing the seam, not filling an existing onRefresh slot.",
-        "finding_ids": ["refresh-cognito-inherited-bare-fetch"]
+        "finding_ids": [
+          "refresh-cognito-inherited-bare-fetch"
+        ]
       }
     },
     "identity_provider": {
       "per_vendor": {
         "cognito": {
           "classification": "scattered",
-          "finding_ids": ["idp-authz-cognito-inline-claims", "idp-cognito-fetchuserattributes"],
+          "finding_ids": [
+            "idp-authz-cognito-inline-claims",
+            "idp-cognito-fetchuserattributes"
+          ],
           "note": "cognito:groups / cognito:username and fetchUserAttributes / custom: attributes read across UserBadge, AdminPanel, and Profile — no adapter localizing them."
         }
       },
@@ -243,7 +372,10 @@
       "cost_evidence": {
         "level": "high",
         "basis": "Cognito-specific surface (cognito:groups, cognito:username, custom: attributes, fetchUserAttributes) is read inline across three app-layer files with nothing localizing it; a provider swap touches every one of these call sites.",
-        "finding_ids": ["idp-authz-cognito-inline-claims", "idp-cognito-fetchuserattributes"]
+        "finding_ids": [
+          "idp-authz-cognito-inline-claims",
+          "idp-cognito-fetchuserattributes"
+        ]
       }
     },
     "authorization": {
@@ -251,7 +383,10 @@
         "cognito": {
           "claims_handling": "inline_reads",
           "api_token_type": "id_token",
-          "finding_ids": ["idp-authz-cognito-inline-claims", "authz-cognito-idtoken-for-api"],
+          "finding_ids": [
+            "idp-authz-cognito-inline-claims",
+            "authz-cognito-idtoken-for-api"
+          ],
           "note": "Authorization decisions read idToken.payload['cognito:groups'] inline with hard-coded role strings; the ID token authorizes the API."
         }
       },
@@ -260,7 +395,10 @@
       "cost_evidence": {
         "level": "high",
         "basis": "Authorization reads idToken.payload['cognito:groups'] inline with hard-coded role strings in two components, and the ID token authorizes the API; a move to a policy layer plus access tokens has no single place to change.",
-        "finding_ids": ["idp-authz-cognito-inline-claims", "authz-cognito-idtoken-for-api"]
+        "finding_ids": [
+          "idp-authz-cognito-inline-claims",
+          "authz-cognito-idtoken-for-api"
+        ]
       }
     }
   },
@@ -270,25 +408,35 @@
       "axis": "storage",
       "question": "Is a token-storage change actually on the table — e.g. a move to HttpOnly cookies, an encrypted store, or session cookies?",
       "context": "Storage is the default localStorage today. Whether that should change is roadmap, not code; and a change here is what breaks Amplify's silent refresh (see refresh).",
-      "finding_ids": ["storage-cognito-default-localstorage"]
+      "finding_ids": [
+        "storage-cognito-default-localstorage"
+      ]
     },
     {
       "axis": "refresh",
       "question": "Is owning refresh (401-interceptor + single-flight + explicit onSessionExpired) on the roadmap?",
       "context": "Refresh is inherited vendor magic today. Refresh changes are usually downstream of a storage move — likelihood is a human call.",
-      "finding_ids": ["refresh-cognito-inherited-bare-fetch"]
+      "finding_ids": [
+        "refresh-cognito-inherited-bare-fetch"
+      ]
     },
     {
       "axis": "identity_provider",
       "question": "Is a provider swap away from Cognito realistically on the table in the foreseeable roadmap, and how much Cognito-specific behavior are you willing to keep?",
       "context": "Cognito-specific surface is scattered across app code; the cost of a swap turns on how much of it you intend to preserve versus localize. Both are roadmap and appetite calls.",
-      "finding_ids": ["idp-authz-cognito-inline-claims", "idp-cognito-fetchuserattributes"]
+      "finding_ids": [
+        "idp-authz-cognito-inline-claims",
+        "idp-cognito-fetchuserattributes"
+      ]
     },
     {
       "axis": "authorization",
       "question": "Are authorization-model changes planned (RBAC/ABAC or finer permissions), or a move from the ID token to the access token for API authorization?",
       "context": "Authorization is inline claim reads with the ID token authorizing the API. What backend contracts depend on the current ID-token choice is not visible in this code.",
-      "finding_ids": ["idp-authz-cognito-inline-claims", "authz-cognito-idtoken-for-api"]
+      "finding_ids": [
+        "idp-authz-cognito-inline-claims",
+        "authz-cognito-idtoken-for-api"
+      ]
     },
     {
       "axis": null,
@@ -303,7 +451,10 @@
     "posture": "heavily calcified — no boundary; vendor shape leaks across all four axes",
     "headline": {
       "text": "The one file that looks like a seam — lib/auth-helpers.ts — hands back Amplify's AuthSession unchanged, so the vendor's shape reaches every caller; combined with the ID token (not the access token) going out as the API Authorization header, both an auth-model change and a provider swap are cross-cutting rewrites today, not local edits.",
-      "finding_ids": ["boundary-cognito-leaky-facade", "authz-cognito-idtoken-for-api"]
+      "finding_ids": [
+        "boundary-cognito-leaky-facade",
+        "authz-cognito-idtoken-for-api"
+      ]
     }
   }
 }

@@ -34,6 +34,8 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { validateShape } from "./lib/schema.ts";
 import { checkInvariants } from "./lib/invariants.ts";
+import { evaluate } from "./lib/expectations.ts";
+import type { FixtureExpectations } from "./lib/expectations.ts";
 import type { AuditDoc } from "./lib/types.ts";
 
 const HARNESS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -165,5 +167,23 @@ const res = checkInvariants(doc as AuditDoc, workspace);
 console.log(`shape valid — checked ${res.findings} findings, ${res.references} references`);
 for (const w of res.warnings) console.log(`WARN  ${w}`);
 for (const e of res.errors) console.log(`ERROR ${e}`);
-console.log(res.errors.length ? `run artifacts kept at ${runDir}` : `ALL CHECKS PASS — run kept at ${runDir}`);
-process.exit(res.errors.length ? 1 : 0);
+if (res.errors.length) {
+  console.log(`run artifacts kept at ${runDir}`);
+  process.exit(1);
+}
+
+// --- 5. fixture ground truth, when this fixture has an expectation file ---
+const expPath = join(HARNESS_DIR, "expectations", `${fixture}.json`);
+if (existsSync(expPath)) {
+  const exp = JSON.parse(readFileSync(expPath, "utf8")) as FixtureExpectations;
+  const expErrors = evaluate(doc as AuditDoc, exp.assertions);
+  for (const e of expErrors) console.log(`EXPECT ${e}`);
+  if (expErrors.length) {
+    console.log(`${expErrors.length} expectation failure(s) — run kept at ${runDir}`);
+    process.exit(1);
+  }
+  console.log(`expectations: ${exp.assertions.length} assertions pass`);
+}
+
+console.log(`ALL CHECKS PASS — run kept at ${runDir}`);
+process.exit(0);

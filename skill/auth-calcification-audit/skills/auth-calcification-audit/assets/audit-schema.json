@@ -10,7 +10,7 @@
                "migration_readiness", "synthesis"],
   "properties": {
 
-    "schema_version": { "const": "1.0" },
+    "schema_version": { "const": "1.1" },
 
     "meta": {
       "type": "object",
@@ -79,7 +79,7 @@
 
     "findings": {
       "type": "array",
-      "description": "THE canonical finding set — one flat array. Boundary signals, axes, backlog, and the headline all reference findings by id; a finding is never duplicated into the structures that cite it.",
+      "description": "THE canonical finding set — one flat array. Boundary signals, axes, backlog, and the headline all reference findings by id; a finding is never duplicated into the structures that cite it. Which signal(s)/axis(es) a finding evidences is expressed SOLELY by which assessments cite its id — the relation lives in the citations and nowhere else, so it cannot drift. Reusing one finding under several assessments is correct and encouraged.",
       "items": { "$ref": "#/$defs/finding" }
     },
 
@@ -226,8 +226,6 @@
                    "description": "Stable, content-derived: <signal>-<vendor>-<short-descriptor>, e.g. 'storage-cognito-builtin-selector'. Never sequential ('finding-7')." },
     "repoPath":  { "type": "string", "pattern": "^[^/]", "description": "Relative to the audited root — the same root the markdown links resolve against." },
     "axisKey":   { "enum": ["storage", "refresh", "identity_provider", "authorization"] },
-    "signalKey": { "enum": ["b1_anti_corruption", "b2_injected", "b3_contract_tested", "b4_client_server_split",
-                            "storage", "refresh", "identity_provider", "authorization"] },
 
     "evidenceAnchor": {
       "type": "object",
@@ -244,16 +242,14 @@
     "finding": {
       "type": "object",
       "unevaluatedProperties": false,
-      "required": ["id", "vendor", "signals", "claim", "statement"],
+      "required": ["id", "vendor", "claim", "statement"],
       "properties": {
         "id":        { "$ref": "#/$defs/findingId" },
         "vendor":    { "oneOf": [ { "$ref": "#/$defs/vendorId" }, { "type": "null" } ],
                        "description": "Null only for vendor-independent structural findings (e.g. no SSR surface exists, app code branches on execution context)." },
-        "signals":   { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/signalKey" },
-                       "description": "Every boundary signal / axis this finding evidences — one leaked vendor type can serve both b1_anti_corruption and identity_provider. INVARIANT (harness): every assessment citing this finding must appear in this list, and vice versa." },
         "claim":     { "enum": ["presence", "absence"] },
-        "statement": { "type": "string", "maxLength": 300,
-                       "description": "The one-line claim, plain language. Claim register only — explanation belongs in the rendered markdown, not here." },
+        "statement": { "type": "string", "maxLength": 400,
+                       "description": "The claim, plain language, at most two sentences. Claim register only — implications, consequences, and explanation belong in `note` or the rendered markdown, not here." },
         "note":      { "type": "string" }
       },
       "oneOf": [
@@ -288,7 +284,7 @@
           "description": "'not_applicable' = the concern does not arise in this codebase (e.g. no SSR surface) — a DETERMINED fact, ideally backed by an absence finding. 'undetermined' = could not assess (unparseable, dynamic, out of reach) — must pair with a coverage.gaps entry (harness); never round to 'absent', that is the false all-clear." },
         "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" },
                          "description": "Every determined verdict (present/partial/absent) is evidence-backed — at least one finding, whether presence or absence. May be empty only for not_applicable/undetermined." },
-        "note": { "type": "string", "maxLength": 300, "description": "The key gap or nuance, e.g. 'present but no contract suite'." }
+        "note": { "type": "string", "maxLength": 500, "description": "The key gap or nuance, e.g. 'present but no contract suite'." }
       },
       "allOf": [
         {
@@ -311,8 +307,8 @@
       "description": "The skill's MECHANICAL cost read — present in every run, human or not. Distinct from the maintainer's true retrofit cost, which is theirs to state.",
       "properties": {
         "level":       { "enum": ["low", "moderate", "high"] },
-        "basis":       { "type": "string", "maxLength": 400,
-                         "description": "Concrete mechanical justification: boundary quality, spread of coupling, confirmed call-site counts. NEVER a duration — no hours, days, weeks, sprints." },
+        "basis":       { "type": "string", "maxLength": 700,
+                         "description": "Concrete mechanical justification: boundary quality, spread of coupling, confirmed call-site counts. On multi-vendor codebases cover each vendor in a clause — still concise. NEVER a duration — no hours, days, weeks, sprints." },
         "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } }
       }
     },
@@ -342,7 +338,7 @@
               "classification": { "enum": ["vendor_default", "builtin_selector", "custom_adapter", "other", "undetermined"],
                 "description": "builtin_selector = a built-in persistence selector passed to the storage seam. It is NOT a custom adapter — classifying it as one is the look-alike trap (a serious accuracy error). vendor_default = nothing configured. 'other' = understood pattern outside this vocabulary (note + ≥1 presence finding required). 'undetermined' = could not determine (note + coverage.gaps entry required)." },
               "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
-              "note":        { "type": "string", "maxLength": 300 }
+              "note":        { "type": "string", "maxLength": 500 }
             },
             "allOf": [
               { "if":   { "properties": { "classification": { "const": "undetermined" } } },
@@ -376,7 +372,7 @@
               "classification": { "enum": ["inherited", "partial", "owned", "other", "undetermined"],
                 "description": "'partial' = owned shape with gaps (no single-flight, no failure path) or ownership split across surfaces (server owned, client inherited) — the gaps themselves are separate findings. 'other'/'undetermined' per the escape-hatch rules (top-level description)." },
               "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
-              "note":        { "type": "string", "maxLength": 300 }
+              "note":        { "type": "string", "maxLength": 500 }
             },
             "allOf": [
               { "if":   { "properties": { "classification": { "const": "undetermined" } } },
@@ -409,7 +405,7 @@
               "classification": { "enum": ["localized", "scattered", "other", "undetermined"],
                 "description": "Is provider-specific feature usage confined to the adapter, or spread across app code? 'other'/'undetermined' per the escape-hatch rules." },
               "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
-              "note":        { "type": "string", "maxLength": 300 }
+              "note":        { "type": "string", "maxLength": 500 }
             },
             "allOf": [
               { "if":   { "properties": { "classification": { "const": "undetermined" } } },
@@ -444,7 +440,7 @@
               "api_token_type": { "enum": ["access_token", "id_token", "opaque", "not_applicable", "other", "undetermined"],
                 "description": "What populates the outbound Authorization header. 'opaque' = a token the profile identifies as non-JWT/invalid for API auth (a determined fact, not an unknown). 'not_applicable' = no outbound API auth exists. 'undetermined' = could not determine — coverage.gaps pairing required." },
               "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" } },
-              "note":        { "type": "string", "maxLength": 300 }
+              "note":        { "type": "string", "maxLength": 500 }
             },
             "allOf": [
               { "if": { "anyOf": [

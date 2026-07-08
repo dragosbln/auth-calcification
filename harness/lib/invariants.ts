@@ -49,30 +49,32 @@ export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResul
     err(`I1 duplicate finding id: ${dup}`);
   }
 
-  // Collect every finding_ids reference with the signal context it appears under
-  type Ref = { signal: string | null; findingId: string; where: string };
+  // Collect every finding_ids reference. Note (schema 1.1): which signal a
+  // finding evidences is expressed ONLY by these citations — there is no
+  // finding-side signals field to drift against (decisions.md D21).
+  type Ref = { findingId: string; where: string };
   const refs: Ref[] = [];
   for (const [vendor, sigs] of Object.entries(doc.boundary)) {
     for (const [sig, assessment] of Object.entries(sigs)) {
-      for (const fid of assessment.finding_ids) refs.push({ signal: sig, findingId: fid, where: `boundary.${vendor}.${sig}` });
+      for (const fid of assessment.finding_ids) refs.push({ findingId: fid, where: `boundary.${vendor}.${sig}` });
     }
   }
   for (const axis of AXES) {
     for (const [vendor, pv] of Object.entries(doc.axes[axis].per_vendor)) {
-      for (const fid of pv.finding_ids) refs.push({ signal: axis, findingId: fid, where: `axes.${axis}.per_vendor.${vendor}` });
+      for (const fid of pv.finding_ids) refs.push({ findingId: fid, where: `axes.${axis}.per_vendor.${vendor}` });
     }
     for (const fid of doc.axes[axis].cost_evidence.finding_ids ?? []) {
-      refs.push({ signal: null, findingId: fid, where: `axes.${axis}.cost_evidence` });
+      refs.push({ findingId: fid, where: `axes.${axis}.cost_evidence` });
     }
   }
   doc.judgment_calls.forEach((jc, i) => {
-    for (const fid of jc.finding_ids ?? []) refs.push({ signal: null, findingId: fid, where: `judgment_calls[${i}]` });
+    for (const fid of jc.finding_ids ?? []) refs.push({ findingId: fid, where: `judgment_calls[${i}]` });
   });
   for (const fid of doc.synthesis.headline.finding_ids) {
-    refs.push({ signal: null, findingId: fid, where: "synthesis.headline" });
+    refs.push({ findingId: fid, where: "synthesis.headline" });
   }
   (doc.backlog ?? []).forEach((item, i) => {
-    for (const fid of item.finding_ids) refs.push({ signal: null, findingId: fid, where: `backlog[${i}]` });
+    for (const fid of item.finding_ids) refs.push({ findingId: fid, where: `backlog[${i}]` });
   });
 
   // I2: every reference resolves
@@ -80,13 +82,8 @@ export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResul
     if (!findings.has(r.findingId)) err(`I2 unresolved finding id '${r.findingId}' at ${r.where}`);
   }
 
-  // I3: bidirectional signal integrity
-  for (const r of refs) {
-    const f = findings.get(r.findingId);
-    if (r.signal && f && !f.signals.includes(r.signal)) {
-      err(`I3 ${r.where} cites '${r.findingId}' but its signals [${f.signals}] lack '${r.signal}'`);
-    }
-  }
+  // I3: no orphans — a finding nothing cites would never render (and is
+  // therefore unclassified work)
   const referenced = new Set(refs.map((r) => r.findingId));
   for (const fid of findings.keys()) {
     if (!referenced.has(fid)) err(`I3 orphan finding never referenced by any assessment: ${fid}`);
@@ -187,8 +184,17 @@ export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResul
     }
   }
 
-  // I8: no duration language anywhere
+  // I8: no duration language in the SKILL'S OWN VOICE. Human-attributed text
+  // (questions put to the maintainer, their recorded answers) and verbatim
+  // code quotes are exempt — asking about the human's timeline or quoting the
+  // code's constants is not the skill estimating effort.
+  const I8_EXEMPT = [
+    /^\$\.interview\.answers\.[a-z_]+\.(answer|notes)$/,
+    /^\$\.judgment_calls\[\d+\]\.(question|context)$/,
+    /^\$\.findings\[\d+\]\.evidence\[\d+\]\.quote$/,
+  ];
   for (const [path, s] of walkStrings(doc)) {
+    if (I8_EXEMPT.some((rx) => rx.test(path))) continue;
     const m = DURATION_RX.exec(s);
     if (m) err(`I8 duration language at ${path}: ...${m[0]}...`);
   }

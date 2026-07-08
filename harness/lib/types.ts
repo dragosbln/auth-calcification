@@ -20,7 +20,6 @@ export interface EvidenceAnchor {
 export interface Finding {
   id: string;
   vendor: string | null;
-  signals: string[];
   claim: "presence" | "absence";
   statement: string;
   note?: string;

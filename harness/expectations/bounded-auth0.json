@@ -1,0 +1,29 @@
+{
+  "fixture": "bounded-auth0",
+  "assertions": [
+    { "path": "meta.mode", "equals": "non-interactive" },
+    { "path": "vendors", "length": 1 },
+    { "path": "vendors.0.profile", "equals": "auth0.md" },
+
+    { "path": "boundary.<v>.b1_anti_corruption.status", "equals": "present" },
+    { "path": "boundary.<v>.b2_injected.status", "equals": "present" },
+    { "path": "boundary.<v>.b3_contract_tested.status", "equals": "present" },
+    { "path": "boundary.<v>.b4_client_server_split.status", "equals": "not_applicable" },
+
+    { "path": "axes.storage.per_vendor.<v>.classification", "equals": "custom_adapter",
+      "note": "a real ICache implementation passed as `cache` — NOT the cacheLocation built-in selector" },
+    { "path": "axes.refresh.per_vendor.<v>.classification", "equals": "owned" },
+    { "path": "axes.identity_provider.per_vendor.<v>.classification", "equals": "localized" },
+    { "path": "axes.authorization.per_vendor.<v>.claims_handling", "equals": "policy_layer" },
+    { "path": "axes.authorization.per_vendor.<v>.api_token_type", "equals": "access_token",
+      "note": "audience configured — the opaque-token anti-pattern must NOT be reported here" },
+
+    { "path": "axes.storage.likelihood", "isNull": true },
+    { "path": "axes.refresh.likelihood", "isNull": true },
+    { "path": "axes.identity_provider.likelihood", "isNull": true },
+    { "path": "axes.authorization.likelihood", "isNull": true },
+    { "path": "interview", "isNull": true },
+    { "path": "backlog", "isNull": true },
+    { "path": "migration_readiness", "isNull": true }
+  ]
+}

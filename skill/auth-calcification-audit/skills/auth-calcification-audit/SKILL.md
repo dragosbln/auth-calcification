@@ -145,9 +145,10 @@ Prioritize **only** with the maintainer's inputs; show which inputs were theirs.
 
 The skill produces **three artifacts, in this order**:
 
-**Artifact 1 — the JSON (the source of truth).** Read `assets/audit-schema.json` and fill it from the Phase 1 record and the Phase 2 answers. Every `description` in the schema is a binding instruction, not documentation. Two rules carry the audit's honesty:
+**Artifact 1 — the JSON (the source of truth).** Read `assets/audit-schema.json` and fill it from the Phase 1 record and the Phase 2 answers. Every `description` in the schema is a binding instruction, not documentation. Three rules carry the audit's honesty:
 - **Evidence quotes are verbatim** — copied exactly from files you read in Phase 1. If you cannot quote it, you cannot claim it: go back and read the file, or record the claim per the schema's absence/undetermined rules.
 - **Nothing is stated twice** — no stored counts, no rank fields, no collapsed multi-vendor verdicts. The schema's structure enforces most of this; don't fight it.
+- **Every finding earns its place by citation.** Which signal(s) or axis(es) a finding evidences is expressed solely by which assessments cite its id — reusing one finding under several assessments is correct and encouraged. Before saving, verify every finding is cited by at least one assessment; an uncited finding is work you haven't finished classifying.
 
 Save to `<target>/auth-calcification-audit.json`. If that path already exists, save as `…-audit-2.json`, `-3.json`, etc. — next available integer. Do NOT overwrite; the previous run is the maintainer's record.
 

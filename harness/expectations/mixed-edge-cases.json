@@ -1,0 +1,44 @@
+{
+  "fixture": "mixed-edge-cases",
+  "assertions": [
+    { "path": "meta.mode", "equals": "non-interactive" },
+    { "path": "vendors", "length": 3 },
+    { "path": "vendors", "some": { "profile": "amplify-cognito.md" } },
+    { "path": "vendors", "some": { "profile": "auth0.md" } },
+    { "path": "vendors", "some": { "profile": null },
+      "note": "the unprofiled vendor (firebase) must be declared — never silently dropped; I5 ties it to coverage.gaps" },
+
+    { "path": "boundary.<v:amplify-cognito.md>.b1_anti_corruption.status", "equals": "present" },
+    { "path": "boundary.<v:amplify-cognito.md>.b2_injected.status", "oneOf": ["present", "partial"],
+      "note": "tolerance from observed variance (D21/D22): one component constructs the adapter directly — defensibly either" },
+    { "path": "boundary.<v:amplify-cognito.md>.b3_contract_tested.status", "equals": "absent" },
+    { "path": "boundary.<v:amplify-cognito.md>.b4_client_server_split.status", "equals": "not_applicable" },
+    { "path": "boundary.<v:auth0.md>.b1_anti_corruption.status", "equals": "absent",
+      "note": "split verdict: the legacy side is calcified — never collapse to one overall verdict" },
+    { "path": "boundary.<v:auth0.md>.b2_injected.status", "equals": "absent" },
+    { "path": "boundary.<v:auth0.md>.b3_contract_tested.status", "equals": "absent" },
+    { "path": "boundary.<v:auth0.md>.b4_client_server_split.status", "equals": "not_applicable" },
+
+    { "path": "axes.storage.per_vendor.<v:amplify-cognito.md>.classification", "equals": "builtin_selector",
+      "note": "THE look-alike trap: sessionStorage selector passed to setKeyValueStorage is NOT a custom adapter" },
+    { "path": "axes.storage.per_vendor.<v:auth0.md>.classification", "equals": "vendor_default" },
+    { "path": "axes.refresh.per_vendor.<v:amplify-cognito.md>.classification", "equals": "partial",
+      "note": "owned shape without single-flight" },
+    { "path": "axes.refresh.per_vendor.<v:auth0.md>.classification", "equals": "inherited" },
+    { "path": "axes.identity_provider.per_vendor.<v:amplify-cognito.md>.classification", "equals": "localized" },
+    { "path": "axes.identity_provider.per_vendor.<v:auth0.md>.classification", "equals": "scattered" },
+    { "path": "axes.authorization.per_vendor.<v:amplify-cognito.md>.claims_handling", "equals": "principal_without_policy" },
+    { "path": "axes.authorization.per_vendor.<v:amplify-cognito.md>.api_token_type", "equals": "access_token" },
+    { "path": "axes.authorization.per_vendor.<v:auth0.md>.claims_handling", "equals": "inline_reads" },
+    { "path": "axes.authorization.per_vendor.<v:auth0.md>.api_token_type", "equals": "opaque",
+      "note": "audience-less getTokenSilently — the provider-specific anti-pattern must be caught" },
+
+    { "path": "axes.storage.likelihood", "isNull": true },
+    { "path": "axes.refresh.likelihood", "isNull": true },
+    { "path": "axes.identity_provider.likelihood", "isNull": true },
+    { "path": "axes.authorization.likelihood", "isNull": true },
+    { "path": "interview", "isNull": true },
+    { "path": "backlog", "isNull": true },
+    { "path": "migration_readiness", "isNull": true }
+  ]
+}

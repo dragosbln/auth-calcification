@@ -37,9 +37,11 @@ const outDir = mkdtempSync(join(tmpdir(), "audit-mutants-"));
 const MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> = [
   // ---- layer 1: shape violations (ajv should catch these) ----
   {
-    name: "wrong_schema_version",
+    // an artifact from the previous schema generation must not validate —
+    // keep this value one version BEHIND the schema's const
+    name: "outdated_schema_version",
     layer: "schema",
-    apply: (d) => (d.schema_version = "1.1"),
+    apply: (d) => (d.schema_version = "1.0"),
   },
   {
     name: "invalid_enum_classification",
@@ -82,6 +84,13 @@ const MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> 
     layer: "schema",
     apply: (d) => (d.boundary.cognito.b3_contract_tested.finding_ids = []),
   },
+  {
+    // register enforcement: statements are claims, not essays — guards the
+    // maxLength ceilings' existence (calibrated in D20)
+    name: "essay_as_statement",
+    layer: "schema",
+    apply: (d) => (d.findings[0].statement = "This finding matters because ".repeat(20)),
+  },
 
   // ---- layer 2: relational violations (shape-valid, invariants catch) ----
   {
@@ -121,7 +130,6 @@ const MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> 
       d.findings.push({
         id: "storage-cognito-unreferenced-duplicate",
         vendor: "cognito",
-        signals: ["storage"],
         claim: "presence",
         statement: "Duplicate of the selector finding that nothing references.",
         evidence: [

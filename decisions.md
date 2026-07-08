@@ -306,3 +306,145 @@ are staged; docs-only commits skip in ~10ms):
 
 What never runs at commit time: `run_fixture.ts` (live LLM runs — money and minutes;
 manual or CI-scheduled only).
+
+## D20 — First real failures, adjudicated (2026-07-08)
+
+The first live run on mixed-edge-cases (Opus 4.7, $3.25, 30 turns) failed validation —
+8 violations across both layers. Each demanded a verdict: is the output wrong, or is
+the test wrong? The answers split three ways, which is the whole lesson:
+
+**Test miscalibrated (fixed in the schema):** two `cost_evidence.basis` fields blew the
+400-char cap with dense, legitimate two-vendor justification — the cap was calibrated
+against a single-vendor mental model (and D14 had already flagged axis-level cost as
+lossy on multi-vendor). Raised to 700 with a "cover each vendor in a clause" description.
+One `statement` overran 300 by 17 chars of register bleed (implication text that belongs
+in `note`); raised to 400 with a sharper two-sentence rule — failing a $3 run over 17
+chars is the wrong trade, the register rule's teeth are the description + note field.
+New `essay_as_statement` mutant guards the ceilings' existence (the maxLength family
+previously had zero mutant coverage).
+
+**Checker bug (fixed in I8):** "24 months" flagged in a judgment-call question — but
+that's the skill's own canonical interview question. Principle now encoded: **the
+no-durations rule binds the skill's voice, not the human's and not the code's.** Exempt:
+questions/context put to the maintainer, recorded interview answers, verbatim evidence
+quotes (code legitimately contains "30 days" expiries). Everything in the skill's voice
+(statements, notes, basis, seams, synthesis, backlog) stays checked.
+
+**Model behavior (fixed in SKILL.md, verified by re-run):** four I3 bidirectional
+violations — the model correctly REUSED findings across signals (a b1 leak as
+identity_provider evidence) but didn't declare the cross-reference in `signals`.
+The invariant is right; the generation guidance was missing. Added the third honesty
+rule to Artifact 1: cross-references are bidirectional, self-verify before saving.
+
+Also proven by this run before anything was fixed: all 24 evidence quotes verified
+verbatim (I4) on the trickiest fixture, and the look-alike storage trap was classified
+`builtin_selector` — the two failure classes the layer was built around did not occur.
+
+Meta-lesson for the article: the first real failure of a test layer is where you learn
+whether each rule was a spec or a guess. Three rules turned out to be guesses (limits,
+I8 scope); the important ones (quotes, hatches, non-negotiables, cross-refs) held as
+specs. Re-run with improved guidance: pending → see D21.
+
+## D21 — Schema 1.1: findings lose `signals`; drift made unrepresentable (2026-07-08)
+
+The D20 re-run halved the I3 bidirectional violations (4 → 2) but didn't eliminate them
+— the model kept failing to keep `finding.signals` consistent with which assessments
+cite the finding. Stopped iterating on prompt wording and re-read the failure: by our
+own D5 rule ("every fact once — anything stated twice can self-disagree"),
+`finding.signals` was a SECOND COPY of a relation the citation graph already encodes.
+We banned stored counts and rank fields for exactly this reason, then stored the
+finding↔signal relation twice and built an invariant whose only job was checking that
+our two copies agree. The model wasn't failing the check; the schema was generating the
+possibility of failure.
+
+**Fix: schema 1.1 removes `signals` from findings.** Which signal(s) a finding
+evidences is expressed solely by which assessments cite its id. I3's bidirectional half
+is deleted (nothing left to drift); the orphan half stays (an uncited finding never
+renders). SKILL.md's third honesty rule rewritten accordingly. All three existing
+artifacts migrated mechanically (golden, committed calcified, the fresh mixed run);
+`schema_version` const bumped to "1.1" — and the stale `wrong_schema_version` mutant
+was caught as MISSED by the suite itself (its "1.1" became the valid value: mutants
+encode the current contract and rot when the contract moves — the MISSED detector is
+what makes that safe). Replaced with `outdated_schema_version` ("1.0" must fail).
+
+The generalizable lesson, probably the article's sharpest point so far: **when an LLM
+repeatedly fails to keep two copies of a fact consistent, the fix is not better
+prompting — it is not storing two copies.** Denormalized bookkeeping is precisely what
+models are bad at; schema design should make consistency nobody's job.
+
+**Mixed-edge-cases re-run (Opus 4.7, $2.91, 28 turns) now passes everything**, with
+perfect recall on the designed traps: Firebase → coverage gap, boundary split per
+vendor, look-alike storage → `builtin_selector`, Auth0 audience-less token → `opaque`,
+posture mid-migration. Artifacts promoted to fixtures/mixed-edge-cases/ (replacing the
+stale D6-era outputs); check_all now guards three committed artifact sets. One noted
+divergence from the hand-written golden: the model rated Cognito b2 `present` where the
+golden says `partial` (direct adapter construction in a component) — a legitimate
+judgment call and the first concrete input to step 6's tolerance decisions (exact-match
+vs allowed-set assertions per field).
+
+Two fixtures remain stale (bounded-cognito, bounded-auth0) — regenerate with step 6.
+
+## D22 — Bounded fixtures regenerated; portability demonstrated (2026-07-08)
+
+Both bounded fixtures ran headless (Opus 4.7; $3.53/33 turns and $2.55/30 turns) and
+initially failed on ONE rule family only: per-vendor `note` maxLength 300, overrun by
+dense legitimate nuance (307, 439, 408 chars — the authorization axis carries two
+dimensions per note; the storage note carried the real-seam-vs-look-alike distinction).
+Same adjudication as D20: calibration guess, not register bleed. All note ceilings
+raised 300 → 500. Three runs have now converged on the empirical rule of thumb: caps
+sized on imagination fail on the fixture that exercises the field hardest.
+
+**Precision holds** (the bounded fixtures are the crying-wolf test): near-clean output,
+boundary present on b1–b3 with the contract suite recognized, `custom_adapter`,
+`owned`, `localized`, `policy_layer` + `access_token`, cost all low. No over-flagging.
+
+**Portability demonstrated** (bounded-auth0's app layer is byte-identical to
+bounded-cognito): every enum-level verdict identical across the two runs — boundary
+statuses, all four axis classifications, both authorization dimensions, all cost
+levels. Variance confined to prose and the presence/absence split (14/4 vs 15/3).
+The methodology travels, at exactly the altitude assertions operate on — this becomes
+step 6's structural-equality test between the two fixtures' JSONs.
+
+All four fixtures + the golden file now pass the full stack; check_all (and the
+pre-commit hook) guards five committed artifact sets. Live-run scoreboard so far:
+4 fixtures × Opus 4.7 ≈ $12, every failure adjudicated into either a calibration fix
+(maxLengths), a checker fix (I8 voice rule), or a schema fix (D21 normalization) —
+zero unexplained failures, zero fabricated evidence across 72 verified quotes.
+
+Remaining for step 6 proper: expectation files per fixture (must-detect /
+must-not-claim / allowed-set assertions, e.g. b2 ∈ {present, partial} per the D21
+divergence), the bounded-pair structural-equality test, then step 7 (cross-format
+agreement).
+
+## D23 — Step 6 shipped: fixture expectations as declarative ground truth (2026-07-08)
+
+Layer 3 of the harness: `expectations/<fixture>.json` files evaluated by
+`assert_fixtures.ts` (in `npm test`, hence pre-commit) and by `run_fixture.ts` after
+every live run (run → shape → invariants → ground truth, one command). Design calls:
+
+- **Declarative JSON, tiny vocabulary** (equals / oneOf / isNull / length / minLength /
+  some) rather than TS test files — the expectation file IS the fixture's design
+  contract, readable as a spec, diffable as data. 87 assertions across four fixtures.
+- **Vendor ids resolve via profile filename** (`<v>`, `<v:auth0.md>`), never hardcoded —
+  ids are model-chosen and unstable; profile filenames ship with the skill and are the
+  stable join key.
+- **No finding-count assertions in v1** — models consolidate or split findings
+  run-to-run (one finding with three anchors vs three findings); counts fence
+  consolidation style, not detection quality. The enums are the recall test. Revisit
+  only with evidence of under-detection sneaking past enums.
+- **Tolerance policy**: allowed-sets only where real variance was observed and both
+  readings are defensible — currently exactly one: mixed b2 ∈ {present, partial}
+  (D21/D22). Everything else is exact-match; loosening requires an adjudicated run,
+  not convenience.
+- **Portability as a permanent test**: `portability-bounded-pair.json` asserts 13
+  enum-level paths equal across the bounded pair's committed audits (byte-identical app
+  layer ⇒ identical verdicts). The methodology-travels claim is now CI-checkable.
+- **Negative-tested**: a scratch file with three deliberately wrong assertions fails
+  with precise messages (a layer that has only ever passed is unproven — the mutant
+  lesson applied to layer 3).
+
+The harness stack is now: shape (ajv) → relations (invariants) → ground truth
+(expectations), all free and pre-commit; live runs get all three plus quote
+verification against the audited workspace. Remaining thread: step 7, cross-format
+agreement (markdown views vs JSON), then the deferred list (interview mocking, model
+matrix, LLM-judge for synthesis quality).

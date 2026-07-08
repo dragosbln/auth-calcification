@@ -9,11 +9,12 @@
   "scripts": {
     "prepare": "git -C .. config core.hooksPath .githooks || true",
     "check": "node check_all.ts",
+    "assert": "node assert_fixtures.ts",
     "mutants": "node mutants.ts",
     "typecheck": "tsc --noEmit",
     "lint": "node lint_versions.ts",
     "run:fixture": "node run_fixture.ts",
-    "test": "npm run typecheck && npm run lint && npm run check && npm run mutants"
+    "test": "npm run typecheck && npm run lint && npm run check && npm run assert && npm run mutants"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
