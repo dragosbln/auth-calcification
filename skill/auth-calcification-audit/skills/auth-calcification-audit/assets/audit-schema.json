@@ -10,7 +10,7 @@
                "migration_readiness", "synthesis"],
   "properties": {
 
-    "schema_version": { "const": "1.1" },
+    "schema_version": { "const": "1.2" },
 
     "meta": {
       "type": "object",
@@ -268,7 +268,9 @@
             "claim":            { "const": "absence" },
             "checked_patterns": { "type": "array", "minItems": 1, "items": { "type": "string" } },
             "searched":         { "type": "array", "items": { "type": "string" },
-                                  "description": "Paths/globs the search covered." }
+                                  "description": "Paths/globs the search covered." },
+            "context_evidence": { "type": "array", "items": { "$ref": "#/$defs/evidenceAnchor" },
+                                  "description": "Optional verifiable anchors that CONTEXTUALIZE the absence — the confirmed code you read while establishing it (e.g. the minimal config whose completeness you checked). Quotes verbatim; mechanically verified exactly like presence evidence. The rendered views may only anchor an absence claim at these locations." }
           },
           "required": ["checked_patterns"]
         }

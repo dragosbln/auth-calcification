@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "meta": {
     "scope": "calcified-cognito",
     "date": "2026-07-08",
@@ -192,6 +192,13 @@
       "searched": [
         "src/lib/amplify-config.ts",
         "src/**"
+      ],
+      "context_evidence": [
+        {
+          "file": "src/lib/amplify-config.ts",
+          "line": 5,
+          "quote": "Amplify.configure({"
+        }
       ]
     },
     {

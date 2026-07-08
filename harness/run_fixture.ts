@@ -35,6 +35,7 @@ import process from "node:process";
 import { validateShape } from "./lib/schema.ts";
 import { checkInvariants } from "./lib/invariants.ts";
 import { evaluate } from "./lib/expectations.ts";
+import { checkAgreement } from "./lib/agreement.ts";
 import type { FixtureExpectations } from "./lib/expectations.ts";
 import type { AuditDoc } from "./lib/types.ts";
 
@@ -184,6 +185,20 @@ if (existsSync(expPath)) {
   }
   console.log(`expectations: ${exp.assertions.length} assertions pass`);
 }
+
+// --- 6. cross-format agreement: the two views vs the JSON ---
+const agree = checkAgreement(
+  doc as AuditDoc,
+  readFileSync(join(workspace, expected[1]), "utf8"),
+  readFileSync(join(workspace, expected[2]), "utf8"),
+);
+for (const w of agree.warnings) console.log(`WARN  ${w}`);
+for (const e of agree.errors) console.log(`AGREE ${e}`);
+if (agree.errors.length) {
+  console.log(`${agree.errors.length} agreement violation(s) — run kept at ${runDir}`);
+  process.exit(1);
+}
+console.log("agreement: views consistent with the JSON");
 
 console.log(`ALL CHECKS PASS — run kept at ${runDir}`);
 process.exit(0);

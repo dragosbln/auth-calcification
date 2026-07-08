@@ -41,7 +41,7 @@ const MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> 
     // keep this value one version BEHIND the schema's const
     name: "outdated_schema_version",
     layer: "schema",
-    apply: (d) => (d.schema_version = "1.0"),
+    apply: (d) => (d.schema_version = "1.1"),
   },
   {
     name: "invalid_enum_classification",

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "meta": {
     "scope": "bounded-auth0 fixture (harness/runs/bounded-auth0-2026-07-08T17-12-45-823Z/workspace)",
     "date": "2026-07-08",
@@ -19,18 +19,54 @@
   ],
   "coverage": {
     "comprehensive": [
-      { "path": "src/auth/adapters/auth0.ts", "reason": "Boundary/adapter module — the only file importing @auth0/auth0-spa-js. Profile names it load-bearing for all four axes." },
-      { "path": "src/auth/port.ts", "reason": "AuthPort interface — the boundary contract." },
-      { "path": "src/auth/types.ts", "reason": "Domain vocabulary (Principal, Session, AuthError) — what app code sees instead of vendor shapes." },
-      { "path": "src/auth/refresh.ts", "reason": "Single-flight refresh helper — Axis 2 owned-behavior evidence." },
-      { "path": "src/auth/policy.ts", "reason": "Authorization policy layer — Axis 4 seam." },
-      { "path": "src/auth/context.tsx", "reason": "AuthProvider — how the port is injected into the React tree." },
-      { "path": "src/api/client.ts", "reason": "API client — the 401 interceptor / owned-refresh path." },
-      { "path": "src/components/UserBadge.tsx", "reason": "App-layer consumer of the port; leak-check target." },
-      { "path": "src/components/AdminPanel.tsx", "reason": "App-layer consumer using the policy layer; leak-check target." },
-      { "path": "src/pages/Profile.tsx", "reason": "App-layer page consuming the domain Principal; leak-check target." },
-      { "path": "__tests__/auth-contract.test.ts", "reason": "Contract suite — B3 evidence, exercised against both FakeAuth and the real adapter." },
-      { "path": "package.json", "reason": "Vendor detection — established @auth0/auth0-spa-js v2 was the only auth SDK present." }
+      {
+        "path": "src/auth/adapters/auth0.ts",
+        "reason": "Boundary/adapter module — the only file importing @auth0/auth0-spa-js. Profile names it load-bearing for all four axes."
+      },
+      {
+        "path": "src/auth/port.ts",
+        "reason": "AuthPort interface — the boundary contract."
+      },
+      {
+        "path": "src/auth/types.ts",
+        "reason": "Domain vocabulary (Principal, Session, AuthError) — what app code sees instead of vendor shapes."
+      },
+      {
+        "path": "src/auth/refresh.ts",
+        "reason": "Single-flight refresh helper — Axis 2 owned-behavior evidence."
+      },
+      {
+        "path": "src/auth/policy.ts",
+        "reason": "Authorization policy layer — Axis 4 seam."
+      },
+      {
+        "path": "src/auth/context.tsx",
+        "reason": "AuthProvider — how the port is injected into the React tree."
+      },
+      {
+        "path": "src/api/client.ts",
+        "reason": "API client — the 401 interceptor / owned-refresh path."
+      },
+      {
+        "path": "src/components/UserBadge.tsx",
+        "reason": "App-layer consumer of the port; leak-check target."
+      },
+      {
+        "path": "src/components/AdminPanel.tsx",
+        "reason": "App-layer consumer using the policy layer; leak-check target."
+      },
+      {
+        "path": "src/pages/Profile.tsx",
+        "reason": "App-layer page consuming the domain Principal; leak-check target."
+      },
+      {
+        "path": "__tests__/auth-contract.test.ts",
+        "reason": "Contract suite — B3 evidence, exercised against both FakeAuth and the real adapter."
+      },
+      {
+        "path": "package.json",
+        "reason": "Vendor detection — established @auth0/auth0-spa-js v2 was the only auth SDK present."
+      }
     ],
     "sampled": [],
     "gaps": []
@@ -42,8 +78,16 @@
       "claim": "presence",
       "statement": "An AuthPort interface defines the boundary contract in domain terms (methods return Principal / headers / booleans / void), so no vendor shape is required to consume auth.",
       "evidence": [
-        { "file": "src/auth/port.ts", "line": 6, "quote": "export interface AuthPort {" },
-        { "file": "src/auth/port.ts", "line": 8, "quote": "  getPrincipal(): Promise<Principal | null>;" }
+        {
+          "file": "src/auth/port.ts",
+          "line": 6,
+          "quote": "export interface AuthPort {"
+        },
+        {
+          "file": "src/auth/port.ts",
+          "line": 8,
+          "quote": "  getPrincipal(): Promise<Principal | null>;"
+        }
       ]
     },
     {
@@ -52,8 +96,16 @@
       "claim": "presence",
       "statement": "Domain types (Principal, Session, AuthError) are defined outside any vendor namespace and used everywhere in app code.",
       "evidence": [
-        { "file": "src/auth/types.ts", "line": 4, "quote": "export interface Principal {" },
-        { "file": "src/auth/types.ts", "line": 17, "quote": "export class AuthError extends Error {" }
+        {
+          "file": "src/auth/types.ts",
+          "line": 4,
+          "quote": "export interface Principal {"
+        },
+        {
+          "file": "src/auth/types.ts",
+          "line": 17,
+          "quote": "export class AuthError extends Error {"
+        }
       ]
     },
     {
@@ -62,9 +114,21 @@
       "claim": "presence",
       "statement": "The @auth0/auth0-spa-js import — and every Auth0 vendor type — is confined to a single adapter file (src/auth/adapters/auth0.ts); nothing else in src/ imports the SDK.",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 14, "quote": "} from \"@auth0/auth0-spa-js\";" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 12, "quote": "  type Auth0Client," },
-        { "file": "src/auth/adapters/auth0.ts", "line": 13, "quote": "  type ICache," }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 14,
+          "quote": "} from \"@auth0/auth0-spa-js\";"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 12,
+          "quote": "  type Auth0Client,"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 13,
+          "quote": "  type ICache,"
+        }
       ]
     },
     {
@@ -82,7 +146,17 @@
         "User (as an app-layer type)",
         "useAuth0"
       ],
-      "searched": ["src/components/**", "src/pages/**", "src/api/**", "src/auth/context.tsx", "src/auth/policy.ts", "src/auth/port.ts", "src/auth/types.ts", "src/auth/refresh.ts", "__tests__/**"],
+      "searched": [
+        "src/components/**",
+        "src/pages/**",
+        "src/api/**",
+        "src/auth/context.tsx",
+        "src/auth/policy.ts",
+        "src/auth/port.ts",
+        "src/auth/types.ts",
+        "src/auth/refresh.ts",
+        "__tests__/**"
+      ],
       "note": "Every vendor-type occurrence in the codebase is inside src/auth/adapters/auth0.ts (adapter) or the vi.mock('@auth0/auth0-spa-js') block in the contract test — both correct."
     },
     {
@@ -91,8 +165,16 @@
       "claim": "presence",
       "statement": "AuthProvider injects an AuthPort into a React context; components call useAuth() and receive the port + principal without knowing the vendor.",
       "evidence": [
-        { "file": "src/auth/context.tsx", "line": 13, "quote": "export function AuthProvider({" },
-        { "file": "src/auth/context.tsx", "line": 25, "quote": "    <AuthContext.Provider value={{ auth, principal }}>" }
+        {
+          "file": "src/auth/context.tsx",
+          "line": 13,
+          "quote": "export function AuthProvider({"
+        },
+        {
+          "file": "src/auth/context.tsx",
+          "line": 25,
+          "quote": "    <AuthContext.Provider value={{ auth, principal }}>"
+        }
       ]
     },
     {
@@ -101,7 +183,11 @@
       "claim": "presence",
       "statement": "The API client factory receives the AuthPort as a parameter — auth is injected, never imported from the vendor at the call site.",
       "evidence": [
-        { "file": "src/api/client.ts", "line": 7, "quote": "export function createApiClient(auth: AuthPort) {" }
+        {
+          "file": "src/api/client.ts",
+          "line": 7,
+          "quote": "export function createApiClient(auth: AuthPort) {"
+        }
       ]
     },
     {
@@ -110,10 +196,26 @@
       "claim": "presence",
       "statement": "A runAuthContractTests suite asserts against the AuthPort/Principal domain shape and is executed against both an in-memory FakeAuth and the real Auth0 adapter (with the SDK mocked at the import boundary); assertions are vendor-free.",
       "evidence": [
-        { "file": "__tests__/auth-contract.test.ts", "line": 47, "quote": "export function runAuthContractTests(" },
-        { "file": "__tests__/auth-contract.test.ts", "line": 96, "quote": "runAuthContractTests(\"FakeAuth\", () => new FakeAuth());" },
-        { "file": "__tests__/auth-contract.test.ts", "line": 115, "quote": "runAuthContractTests(\"Auth0AuthAdapter\", async () => {" },
-        { "file": "__tests__/auth-contract.test.ts", "line": 73, "quote": "        expect(key.includes(\"://\")).toBe(false);" }
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 47,
+          "quote": "export function runAuthContractTests("
+        },
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 96,
+          "quote": "runAuthContractTests(\"FakeAuth\", () => new FakeAuth());"
+        },
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 115,
+          "quote": "runAuthContractTests(\"Auth0AuthAdapter\", async () => {"
+        },
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 73,
+          "quote": "        expect(key.includes(\"://\")).toBe(false);"
+        }
       ]
     },
     {
@@ -129,7 +231,11 @@
         "getServerSession",
         "typeof window (app-code branching for auth)"
       ],
-      "searched": ["src/**", "__tests__/**", "package.json"],
+      "searched": [
+        "src/**",
+        "__tests__/**",
+        "package.json"
+      ],
       "note": "The only typeof window check in the tree is inside the adapter's signOut (returnTo: window.location.origin) — a defensive check inside the boundary, not app-code branching to obtain auth."
     },
     {
@@ -138,9 +244,21 @@
       "claim": "presence",
       "statement": "Token storage uses a custom ICache implementation (MemoryCache) passed via the cache option to createAuth0Client — the real Auth0 storage seam (not the cacheLocation built-in selector).",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 23, "quote": "class MemoryCache implements ICache {" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 65, "quote": "    cache: new MemoryCache()," },
-        { "file": "src/auth/adapters/auth0.ts", "line": 64, "quote": "    useRefreshTokens: true," }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 23,
+          "quote": "class MemoryCache implements ICache {"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 65,
+          "quote": "    cache: new MemoryCache(),"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 64,
+          "quote": "    useRefreshTokens: true,"
+        }
       ],
       "note": "cacheLocation is not set anywhere; the storage decision is fully expressed by the custom cache implementation. Swapping to an HttpOnly-cookie-backed or encrypted store is a single-file change (the MemoryCache class)."
     },
@@ -150,8 +268,16 @@
       "claim": "presence",
       "statement": "A single-flight refresh helper (refreshOnce) collapses concurrent refresh attempts into one in-flight call and clears itself on completion.",
       "evidence": [
-        { "file": "src/auth/refresh.ts", "line": 6, "quote": "export function refreshOnce(" },
-        { "file": "src/auth/refresh.ts", "line": 9, "quote": "  inflight ??= doRefresh().finally(() => {" }
+        {
+          "file": "src/auth/refresh.ts",
+          "line": 6,
+          "quote": "export function refreshOnce("
+        },
+        {
+          "file": "src/auth/refresh.ts",
+          "line": 9,
+          "quote": "  inflight ??= doRefresh().finally(() => {"
+        }
       ]
     },
     {
@@ -160,9 +286,21 @@
       "claim": "presence",
       "statement": "The API client owns the 401 path: on 401 it calls auth.onRefresh(), retries once, and on continued failure calls auth.onSessionExpired() — an explicit, owned failure route rather than inherited vendor magic.",
       "evidence": [
-        { "file": "src/api/client.ts", "line": 19, "quote": "    if (res.status === 401 && (await auth.onRefresh())) {" },
-        { "file": "src/api/client.ts", "line": 22, "quote": "    if (res.status === 401) {" },
-        { "file": "src/api/client.ts", "line": 23, "quote": "      auth.onSessionExpired();" }
+        {
+          "file": "src/api/client.ts",
+          "line": 19,
+          "quote": "    if (res.status === 401 && (await auth.onRefresh())) {"
+        },
+        {
+          "file": "src/api/client.ts",
+          "line": 22,
+          "quote": "    if (res.status === 401) {"
+        },
+        {
+          "file": "src/api/client.ts",
+          "line": 23,
+          "quote": "      auth.onSessionExpired();"
+        }
       ]
     },
     {
@@ -171,9 +309,21 @@
       "claim": "presence",
       "statement": "The adapter's onRefresh wraps getAccessTokenSilently({ cacheMode: 'off', ... }) inside refreshOnce — a bare vendor refresh call is never used from app code.",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 106, "quote": "    return refreshOnce(async () => {" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 111, "quote": "        await this.client.getAccessTokenSilently({" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 112, "quote": "          cacheMode: \"off\"," }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 106,
+          "quote": "    return refreshOnce(async () => {"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 111,
+          "quote": "        await this.client.getAccessTokenSilently({"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 112,
+          "quote": "          cacheMode: \"off\","
+        }
       ],
       "note": "cacheMode: 'off' forces the SDK to hit the refresh-token flow (useRefreshTokens: true is configured at client creation) rather than serving a still-valid cached token, so onRefresh actually rotates tokens rather than being a no-op."
     },
@@ -183,10 +333,31 @@
       "claim": "presence",
       "statement": "Auth0-specific configuration (audience, scope, useRefreshTokens, ICache) and API calls (createAuth0Client, getAccessTokenSilently, client.logout) are contained inside src/auth/adapters/auth0.ts.",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 57, "quote": "  const client = await createAuth0Client({" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 60, "quote": "    authorizationParams: {" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 61, "quote": "      audience: opts.audience," },
-        { "file": "src/auth/adapters/auth0.ts", "line": 131, "quote": "    await this.client.logout({" }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 57,
+          "quote": "  const client = await createAuth0Client({"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 60,
+          "quote": "    authorizationParams: {"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 61,
+          "quote": "      audience: opts.audience,"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 131,
+          "quote": "    await this.client.logout({"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 134,
+          "quote": "typeof window !== \"undefined\" ? window.location.origin : undefined,"
+        }
       ]
     },
     {
@@ -195,8 +366,16 @@
       "claim": "presence",
       "statement": "Auth0 namespaced-claim URL keys (${namespace}roles, ${namespace}tenantId) are read only inside the adapter's getPrincipal; the domain Principal exposes the concept-level names roles / tenantId instead.",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 100, "quote": "      tenantId: user[`${ns}tenantId`] as string | undefined," },
-        { "file": "src/auth/adapters/auth0.ts", "line": 101, "quote": "      roles: (user[`${ns}roles`] as string[] | undefined) ?? []," }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 100,
+          "quote": "      tenantId: user[`${ns}tenantId`] as string | undefined,"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 101,
+          "quote": "      roles: (user[`${ns}roles`] as string[] | undefined) ?? [],"
+        }
       ]
     },
     {
@@ -212,7 +391,14 @@
         "getIdTokenClaims",
         "useAuth0"
       ],
-      "searched": ["src/components/**", "src/pages/**", "src/api/**", "src/auth/context.tsx", "src/auth/policy.ts", "src/auth/refresh.ts"]
+      "searched": [
+        "src/components/**",
+        "src/pages/**",
+        "src/api/**",
+        "src/auth/context.tsx",
+        "src/auth/policy.ts",
+        "src/auth/refresh.ts"
+      ]
     },
     {
       "id": "authz-auth0-policy-layer",
@@ -220,9 +406,26 @@
       "claim": "presence",
       "statement": "A domain policy layer (can(principal, action)) mediates authorization decisions; components call the policy instead of reading Principal.roles inline.",
       "evidence": [
-        { "file": "src/auth/policy.ts", "line": 13, "quote": "export function can(principal: Principal | null, action: Action): boolean {" },
-        { "file": "src/components/AdminPanel.tsx", "line": 10, "quote": "  if (!can(principal, \"admin.view\")) return null;" },
-        { "file": "src/components/UserBadge.tsx", "line": 12, "quote": "      {principal.email} {can(principal, \"admin.view\") ? \"(admin)\" : \"\"}" }
+        {
+          "file": "src/auth/policy.ts",
+          "line": 13,
+          "quote": "export function can(principal: Principal | null, action: Action): boolean {"
+        },
+        {
+          "file": "src/components/AdminPanel.tsx",
+          "line": 10,
+          "quote": "  if (!can(principal, \"admin.view\")) return null;"
+        },
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 12,
+          "quote": "      {principal.email} {can(principal, \"admin.view\") ? \"(admin)\" : \"\"}"
+        },
+        {
+          "file": "src/auth/policy.ts",
+          "line": 8,
+          "quote": "const ROLES: Record<Action, string[]> = {"
+        }
       ]
     },
     {
@@ -231,9 +434,21 @@
       "claim": "presence",
       "statement": "Outbound requests carry the access token obtained via getAccessTokenSilently with an audience configured — a real JWT API access token, not the ID token and not the opaque-token Auth0 anti-pattern.",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 79, "quote": "      const token = await this.client.getAccessTokenSilently({" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 81, "quote": "          audience: this.opts.audience," },
-        { "file": "src/auth/adapters/auth0.ts", "line": 85, "quote": "      return token ? { Authorization: `Bearer ${token}` } : {};" }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 79,
+          "quote": "      const token = await this.client.getAccessTokenSilently({"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 81,
+          "quote": "          audience: this.opts.audience,"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 85,
+          "quote": "      return token ? { Authorization: `Bearer ${token}` } : {};"
+        }
       ],
       "note": "The Auth0 profile explicitly names the misuse signal: a missing `audience` yields an opaque (non-JWT) token or forces the app to lean on the ID token for API auth. This adapter avoids both by requiring `audience` on the options type and passing it through on every getAccessTokenSilently call."
     },
@@ -243,8 +458,16 @@
       "claim": "presence",
       "statement": "The adapter maps Auth0's user object to the domain Principal (userId / email / tenantId / roles); app code never sees vendor-shaped user objects.",
       "evidence": [
-        { "file": "src/auth/adapters/auth0.ts", "line": 91, "quote": "  async getPrincipal(): Promise<Principal | null> {" },
-        { "file": "src/auth/adapters/auth0.ts", "line": 97, "quote": "    return {" }
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 91,
+          "quote": "  async getPrincipal(): Promise<Principal | null> {"
+        },
+        {
+          "file": "src/auth/adapters/auth0.ts",
+          "line": 97,
+          "quote": "    return {"
+        }
       ]
     }
   ],
@@ -289,7 +512,9 @@
       "per_vendor": {
         "auth0": {
           "classification": "custom_adapter",
-          "finding_ids": ["storage-auth0-custom-icache"],
+          "finding_ids": [
+            "storage-auth0-custom-icache"
+          ],
           "note": "MemoryCache implements ICache and is passed as the cache option to createAuth0Client. This is the real Auth0 storage seam — not the cacheLocation built-in selector (which the adapter comment explicitly calls out as the look-alike trap). Note: MemoryCache is an in-memory implementation; if the maintainer's target storage is HttpOnly cookies or an encrypted store, the seam is present but the destination implementation is not yet written."
         }
       },
@@ -298,7 +523,10 @@
       "cost_evidence": {
         "level": "low",
         "basis": "The seam exists in one file (src/auth/adapters/auth0.ts). Zero confirmed call sites in app code touch storage. A storage change is one class replacement inside the adapter; no components, pages, or the API client need to move.",
-        "finding_ids": ["storage-auth0-custom-icache", "boundary-auth0-adapter-single-file"]
+        "finding_ids": [
+          "storage-auth0-custom-icache",
+          "boundary-auth0-adapter-single-file"
+        ]
       }
     },
     "refresh": {
@@ -318,7 +546,11 @@
       "cost_evidence": {
         "level": "low",
         "basis": "Owned refresh is fully in place across three files (client.ts, refresh.ts, adapter). No app code holds a bare vendor refresh call. Changing the refresh mechanism (e.g., moving to server-side refresh via HttpOnly cookies) touches the adapter's onRefresh body only.",
-        "finding_ids": ["refresh-auth0-owned-401-path", "refresh-auth0-single-flight-helper", "refresh-auth0-adapter-onrefresh"]
+        "finding_ids": [
+          "refresh-auth0-owned-401-path",
+          "refresh-auth0-single-flight-helper",
+          "refresh-auth0-adapter-onrefresh"
+        ]
       }
     },
     "identity_provider": {
@@ -339,7 +571,11 @@
       "cost_evidence": {
         "level": "low",
         "basis": "Zero confirmed vendor-surface call sites outside src/auth/adapters/auth0.ts. Components, pages, and the api client are provider-agnostic and would not need to change on an adapter swap. The contract suite makes 'migration complete' mechanically checkable — the new adapter must simply make runAuthContractTests green.",
-        "finding_ids": ["identity-auth0-vendor-surface-in-adapter", "identity-auth0-no-inline-namespaced-reads", "boundary-auth0-contract-suite"]
+        "finding_ids": [
+          "identity-auth0-vendor-surface-in-adapter",
+          "identity-auth0-no-inline-namespaced-reads",
+          "boundary-auth0-contract-suite"
+        ]
       }
     },
     "authorization": {
@@ -361,7 +597,10 @@
       "cost_evidence": {
         "level": "low",
         "basis": "One policy file (src/auth/policy.ts) mediates all authorization decisions. Two confirmed policy call sites in components; both go through can(). The token-type decision (access token, with audience) is expressed by the adapter's options type — the anti-pattern is not reachable without changing the adapter's public shape.",
-        "finding_ids": ["authz-auth0-policy-layer", "authz-auth0-access-token-with-audience"]
+        "finding_ids": [
+          "authz-auth0-policy-layer",
+          "authz-auth0-access-token-with-audience"
+        ]
       }
     }
   },
@@ -371,31 +610,43 @@
       "axis": "storage",
       "question": "Is a token storage change actually on the table (e.g., moving MemoryCache to an HttpOnly-cookie-backed or encrypted ICache), or is in-memory acceptable for now?",
       "context": "The custom ICache seam exists and is exercised — swapping the implementation is a single-file change — but MemoryCache itself is a fixture-grade in-memory store. Whether that counts as a 'todo' or 'done' depends on the intended production storage posture, which isn't in the code.",
-      "finding_ids": ["storage-auth0-custom-icache"]
+      "finding_ids": [
+        "storage-auth0-custom-icache"
+      ]
     },
     {
       "axis": "refresh",
       "question": "Any owned-refresh change planned beyond what's already here (e.g., server-side refresh via HttpOnly cookies)?",
       "context": "Refresh is already interceptor-owned with single-flight and an explicit failure path. Whether to move refresh entirely server-side (which would tie into the storage decision above) is a maintainer call.",
-      "finding_ids": ["refresh-auth0-owned-401-path", "refresh-auth0-single-flight-helper"]
+      "finding_ids": [
+        "refresh-auth0-owned-401-path",
+        "refresh-auth0-single-flight-helper"
+      ]
     },
     {
       "axis": "identity_provider",
       "question": "Is a provider swap on the roadmap (in the next 12–24 months), or is Auth0 locked in for defensive/compliance reasons?",
       "context": "The adapter localization means a swap is cheap mechanically, but the value of doing the work depends on how likely a swap actually is. If Auth0 is locked in, no action is needed; if a swap is realistic, the current shape is what you'd hope to be starting from.",
-      "finding_ids": ["identity-auth0-vendor-surface-in-adapter", "boundary-auth0-contract-suite"]
+      "finding_ids": [
+        "identity-auth0-vendor-surface-in-adapter",
+        "boundary-auth0-contract-suite"
+      ]
     },
     {
       "axis": "authorization",
       "question": "Are authorization model changes planned — finer permissions (RBAC via Auth0 API RBAC, ABAC), Organizations, or a shift to server-issued permission claims — that would extend the current role-based policy?",
       "context": "The current policy is role-string based (admin, billing-admin) with an action map. Moving to permission-scoped or organization-scoped decisions is straightforward inside policy.ts + Principal, but only worth doing if it's actually planned.",
-      "finding_ids": ["authz-auth0-policy-layer"]
+      "finding_ids": [
+        "authz-auth0-policy-layer"
+      ]
     },
     {
       "axis": null,
       "question": "MemoryCache in production: is this fixture-grade code representative of the intended production store, or a placeholder to be replaced before shipping?",
       "context": "In real deployments, in-memory token storage evaporates on tab close and provides no isolation from XSS in the same origin. The seam is right; the destination might not be.",
-      "finding_ids": ["storage-auth0-custom-icache"]
+      "finding_ids": [
+        "storage-auth0-custom-icache"
+      ]
     }
   ],
   "backlog": null,

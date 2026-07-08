@@ -89,10 +89,10 @@ export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResul
     if (!referenced.has(fid)) err(`I3 orphan finding never referenced by any assessment: ${fid}`);
   }
 
-  // I4: evidence quotes verify against the codebase (presence claims)
+  // I4: evidence quotes verify against the codebase — presence evidence and
+  // absence context anchors alike (schema >= 1.2)
   for (const f of doc.findings) {
-    if (f.claim !== "presence") continue;
-    for (const ev of f.evidence ?? []) {
+    for (const ev of [...(f.evidence ?? []), ...(f.context_evidence ?? [])]) {
       const fp = join(codeRoot, ev.file);
       if (!existsSync(fp)) {
         err(`I4 ${f.id}: cited file does not exist: ${ev.file}`);

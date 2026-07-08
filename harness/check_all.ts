@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { validateShape } from "./lib/schema.ts";
 import { checkInvariants } from "./lib/invariants.ts";
+import { checkAgreement } from "./lib/agreement.ts";
 import type { AuditDoc } from "./lib/types.ts";
 
 const HARNESS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -59,12 +60,28 @@ for (const t of targets) {
   }
   const res = checkInvariants(doc as AuditDoc, t.codeRoot);
   for (const w of res.warnings) console.log(`  WARN  ${w}`);
-  if (res.errors.length) {
+
+  // cross-format agreement, when the markdown views sit next to the JSON
+  const reportPath = join(t.codeRoot, "auth-calcification-audit-report.md");
+  const summaryPath = join(t.codeRoot, "auth-calcification-audit-summary.md");
+  const agreementErrors: string[] = [];
+  if (t.name.startsWith("fixtures/") && existsSync(reportPath) && existsSync(summaryPath)) {
+    const agree = checkAgreement(
+      doc as AuditDoc,
+      readFileSync(reportPath, "utf8"),
+      readFileSync(summaryPath, "utf8"),
+    );
+    for (const w of agree.warnings) console.log(`  WARN  ${w}`);
+    agreementErrors.push(...agree.errors);
+  }
+
+  const allErrors = [...res.errors, ...agreementErrors];
+  if (allErrors.length) {
     failed++;
     console.log(`FAIL ${t.name}`);
-    for (const e of res.errors) console.log(`  ERROR ${e}`);
+    for (const e of allErrors) console.log(`  ERROR ${e}`);
   } else {
-    console.log(`PASS ${t.name} (${res.findings} findings, ${res.references} references)`);
+    console.log(`PASS ${t.name} (${res.findings} findings, ${res.references} references, agreement ok)`);
   }
 }
 

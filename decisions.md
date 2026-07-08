@@ -448,3 +448,45 @@ The harness stack is now: shape (ajv) → relations (invariants) → ground trut
 verification against the audited workspace. Remaining thread: step 7, cross-format
 agreement (markdown views vs JSON), then the deferred list (interview mocking, model
 matrix, LLM-judge for synthesis quality).
+
+## D24 — Step 7 shipped: cross-format agreement; schema 1.2 (2026-07-08)
+
+Layer 4 (`lib/agreement.ts`, in check_all/pre-commit, in run_fixture as stage 6, and
+as a standalone `agree.ts <dir>` CLI) checks the claim register of both markdown views
+against the JSON — the check that gives the JSON assertions jurisdiction over what
+humans read. Six deterministic checks: **A1** every line-anchored link resolves to a
+JSON evidence anchor (+ display/href consistency, no bare path:line); **A2** report
+metadata block and summary intro state the JSON's date/mode/model/skill version;
+**A3** disclaimer rendered ⇔ `disclaimer_fired`; **A4** each scorecard row contains
+recognizable tokens for every per-vendor enum verdict (boundary row checked against
+b1); **A5** backlog null ⇔ "Top open questions" shape; **A6** posture reflected at
+≥0.8 token containment.
+
+First run against the four committed trios: **24 violations**, adjudicated D20-style
+into three buckets:
+- **Parser naivety (fixed in the checker):** real renderers write `[:96](f#L96)`
+  line-continuation displays, `[f:79](#L79)–[:83](#L83)` range pairs (the end link
+  bounds the same claim — exempt when the start is backed), paraphrased posture
+  ("vendor shape" → "the vendor's shape" — exact substring replaced by token
+  containment), and models stated without the parenthetical id suffix.
+- **Schema gap (fixed as schema 1.2):** the predicted absence-anchor case appeared —
+  the summary anchored "default storage" at `amplify-config.ts:5`, the config an
+  absence claim was confirmed against, which the schema couldn't express. Absence
+  findings now carry optional `context_evidence` (verifiable anchors contextualizing
+  the absence; I4 verifies their quotes like all others; views may only anchor absence
+  claims there).
+- **Real drift (fixed by verifiable enrichment):** views cited true lines the JSON
+  never recorded (`policy.ts:8` — the ROLES table; `auth0.ts:134` — the typeof-window
+  guard). Enriched the committed JSONs with those anchors, each quote mechanically
+  verified against source. Future runs can't drift this way silently: run_fixture now
+  fails on it.
+
+Negative-tested with four corruption classes (fabricated anchor, metadata drift,
+unfounded disclaimer, ranking-shape violation) — all caught. Deliberately NOT checked:
+headline/prose text similarity and synthesis quality — that is the LLM-judge layer,
+still deferred by design.
+
+**Steps 1–7 of D11 are complete.** The layer stack: schema shape → relational
+invariants → fixture ground truth → cross-format agreement, all free at commit time,
+all applied plus quote verification on every live run. Open deferred threads:
+interview mocking (unlocks backlog/ranking tests), model matrix, LLM-as-judge.

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "meta": {
     "scope": "mixed-edge-cases fixture (workspace root, src/)",
     "date": "2026-07-08",

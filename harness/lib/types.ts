@@ -28,6 +28,8 @@ export interface Finding {
   /** absence claims only */
   checked_patterns?: string[];
   searched?: string[];
+  /** absence claims only (schema >= 1.2): verifiable anchors that contextualize the absence */
+  context_evidence?: EvidenceAnchor[];
 }
 
 export interface SignalAssessment {
