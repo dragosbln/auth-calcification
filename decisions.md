@@ -521,3 +521,79 @@ produced by a real run (only mutant-tested). Interactive is the DEFAULT mode for
 users. Mitigation: one manual interactive run on a fixture before publish; proper fix
 is the deferred interview-mocking thread. Also never fired live: the other/undetermined
 hatches (expected to fire first on production codebases — that is them working).
+
+## D26 — Interview mocking shipped: `_interview.yaml`; the interactive surface gets its checks (2026-07-09)
+
+The D14 placement question resolved as a split: **the file format is a skill
+affordance** (documented in SKILL.md Phase 2 + README — a consultant can pre-fill a
+client's answers; `interview.source: "file"` and `cost_confirmed` were designed for
+this in D10 and have been waiting), **but the canned answers live in the harness**
+(`harness/interviews/<fixture>.yaml`), copied into the workspace only when
+`run_fixture.ts --interactive` runs. Fixtures stay non-interactive by default; the
+runner controls the mode. Semantics: the flag decides IF Phase 2 runs; the file
+decides WHERE answers come from; `interactive=false` skips Phase 2 even if a file
+exists.
+
+**The conceptual unlock:** the answers file is the one part of a run whose correct
+output is fully known in advance — so the interactive surface gets INPUT→OUTPUT
+FIDELITY checks no live interview could have:
+- **I9 (new invariant family, active whenever the audited root has _interview.yaml):**
+  source must be 'file'; answered-axes sets must match; every answer reproduced
+  VERBATIM (the human's words — non-negotiable #1's pledge, now mechanical);
+  likelihood must equal the documented mapping (harness mirror of the SKILL.md table
+  in lib/interview.ts); cost_confirmed honored per axis. Negative-tested: 4/4
+  corruption classes caught, including a paraphrased answer.
+- **I6 extended:** interview present ⇒ mode is interactive; any likelihood ⇒ backlog
+  non-null ("the maintainer answered; the ranking is owed"); backlog ⇒ some
+  likelihood. Two new mutants cover these (17 total).
+- **A7 (agreement):** a ranked backlog must surface in the views — every task
+  token-reflected in the report, the #1 move in the summary's Top moves.
+- **`expectations/calcified-cognito.interactive.json`:** the handoff's original
+  promise ("a given set of answers produces a given ranked backlog") as a spec —
+  answers chosen to exercise all likelihood tiers incl. 'none' (locked-in),
+  cost_confirmed, storage ranking #1 (high likelihood × maintainer-confirmed moderate
+  cost beats authorization's high cost), migration_readiness covering the flagged
+  storage change. Standalone from the non-interactive spec; assert_fixtures skips
+  *.interactive.json (they describe runs, not committed artifacts).
+
+Version 1.4.0 (user-facing feature). Known debt: backlog ORDER beyond #1 is only
+softly specified (leverage is judgment — candidate for the judge layer).
+
+## D27 — First live interactive run: A7 miscalibration adjudicated; surface committed (2026-07-09)
+
+First real interactive run (calcified-cognito + answers file, Opus 4.7, $3.03): I9
+fidelity, the extended I6 implications, and ALL 27 interactive expectations passed on
+the first try — the whole interview → likelihood-mapping → ranked-backlog →
+migration_readiness chain worked live. Only A7 tripped, at 11/16 tokens (just under the
+0.7 bar).
+
+Adjudicated as a CHECK-CONCEPT error, not model drift: the JSON backlog #1 ("Introduce
+a domain AuthPort…") and the summary's Top move #1 ("Introduce the AuthPort boundary")
+are the SAME move — the summary correctly compressed the verbose task, dropping exactly
+the file-path parenthetical and elaboration a summary should drop. Absolute
+token-containment is the wrong tool for the summary because compression is its JOB;
+demanding word-retention punishes good writing. Fix: the summary sub-check became
+**nearest-match** — the lead Top move must resemble backlog #1 more than any other task
+(argmax over token overlap), which is compression-robust AND still catches a genuinely
+reordered lead (negative-tested: swapping the lead to the #2 move → "matches backlog #2,
+not #1"). The report sub-check keeps token-containment (the report enumerates the full
+backlog verbatim — containment is right there). Whether the headline is well-WRITTEN
+stays a judge-layer question. Generalizable lesson: a check that fights the artifact's
+purpose is miscalibrated even when the threshold "feels" right — measure the property
+(is it the same move?), not a proxy (did the words survive?).
+
+Durability: promoted the passing run to a committed fixture
+(`fixtures/calcified-cognito-interactive/`, carrying its `_interview.yaml`) — the only
+committed artifact that exercises I9 + A7 + the mapping, so the whole interactive
+surface is now guarded FREE at commit time (check_all + assert). Resolved the earlier
+I9-mutation debt: `mutants.ts` gained a second base (the interactive fixture) and four
+I9 mutants (source-not-file, non-verbatim answer, wrong mapping, dropped cost_confirmed)
+— all caught. 21 mutants total. Naming reconciled: one `calcified-cognito-interactive.json`
+expectation serves both the committed fixture and live `--interactive` runs.
+
+Remaining mutation-coverage gap (pre-existing, now explicit): the agreement layer
+(A1–A7) has no permanent mutant coverage — it's negative-tested manually (4 classes in
+step 7, A7 reorder here). Bringing agreement under mutation testing is its own small
+initiative, deferred. Interactive path is no longer the top publish risk — it has a
+live pass + committed guard. The remaining deferred threads are unchanged: model matrix,
+LLM-as-judge for headline quality and backlog order.

@@ -34,6 +34,32 @@ type Layer = "schema" | "invariants";
 const golden: Doc = JSON.parse(readFileSync(GOLDEN, "utf8"));
 const outDir = mkdtempSync(join(tmpdir(), "audit-mutants-"));
 
+// interactive base — the only committed artifact that carries an _interview.yaml
+// (in its fixture dir), so the only one that can exercise the I9 fidelity family
+const INTERACTIVE_ROOT = join(HARNESS_DIR, "../fixtures/calcified-cognito-interactive");
+const interactiveBase: Doc = JSON.parse(readFileSync(join(INTERACTIVE_ROOT, "auth-calcification-audit.json"), "utf8"));
+
+// I9 (answers-file fidelity) mutations — all layer-2. The file says storage:
+// "Yes — planned"/cost moderate, refresh: "Tied to storage" (→ medium).
+const I9_MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> = [
+  { name: "i9_source_not_file", layer: "invariants", apply: (d) => (d.interview.source = "live") },
+  {
+    name: "i9_answer_not_verbatim",
+    layer: "invariants",
+    apply: (d) => (d.interview.answers.storage.answer = "Yes, we plan to"),
+  },
+  {
+    name: "i9_wrong_likelihood_mapping",
+    layer: "invariants",
+    apply: (d) => (d.axes.refresh.likelihood = "high"), // file says "Tied to storage" → medium
+  },
+  {
+    name: "i9_cost_confirmed_dropped",
+    layer: "invariants",
+    apply: (d) => delete d.axes.storage.cost_confirmed, // file says moderate
+  },
+];
+
 const MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> = [
   // ---- layer 1: shape violations (ajv should catch these) ----
   {
@@ -149,6 +175,28 @@ const MUTATIONS: Array<{ name: string; layer: Layer; apply: (d: Doc) => void }> 
         { task: "add contract suite", axes: ["storage"], why: "x", finding_ids: ["b3-cognito-no-contract-suite"] },
       ]),
   },
+  {
+    // Phase 2 ran in a mode that forbids it — interview data in a
+    // non-interactive run is a mode-contract violation
+    name: "interview_in_noninteractive_mode",
+    layer: "invariants",
+    apply: (d) => {
+      d.interview = { source: "live", answers: { storage: { answer: "Yes — planned" } } };
+      d.axes.storage.likelihood = "high";
+      d.backlog = [{ task: "own the storage seam", axes: ["storage"], why: "x", finding_ids: ["storage-cognito-builtin-selector"] }];
+    },
+  },
+  {
+    // the maintainer answered but no ranking was produced — the ranking is owed
+    name: "answered_but_unranked",
+    layer: "invariants",
+    apply: (d) => {
+      d.meta.mode = "interactive";
+      d.interview = { source: "live", answers: { storage: { answer: "Yes — planned" } } };
+      d.axes.storage.likelihood = "high";
+      // backlog stays null
+    },
+  },
 ];
 
 function catchingLayer(stdout: string): Layer | null {
@@ -181,13 +229,43 @@ for (const { name, layer: expected, apply } of MUTATIONS) {
   }
 }
 
-// sanity: the unmutated golden file must still pass the full stack
+// I9 mutations run against the interactive fixture (its dir has _interview.yaml)
+for (const { name, layer: expected, apply } of I9_MUTATIONS) {
+  const doc: Doc = structuredClone(interactiveBase);
+  apply(doc);
+  const mutantPath = join(outDir, `mutant_${name}.json`);
+  writeFileSync(mutantPath, JSON.stringify(doc));
+
+  const r = spawnSync(process.execPath, [CHECK, mutantPath, INTERACTIVE_ROOT], { encoding: "utf8" });
+  const caught = r.status !== 0;
+  const actual = catchingLayer(r.stdout);
+  const firstHit = r.stdout.split("\n").find((l) => l.startsWith("ERROR I9")) ?? "(no I9 line)";
+
+  if (!caught) {
+    failures++;
+    console.log(`MISSED            ${name}: mutant passed the full check`);
+  } else if (actual !== expected) {
+    failures++;
+    console.log(`WRONG LAYER       ${name}: expected ${expected}, caught by ${actual}`);
+  } else {
+    console.log(`CAUGHT [${expected.padEnd(10)}] ${name}: ${firstHit}`);
+  }
+}
+
+// sanity: the unmutated golden AND interactive fixture must still pass
 const clean = spawnSync(process.execPath, [CHECK, GOLDEN, FIXTURE], { encoding: "utf8" });
 if (clean.status !== 0) {
   failures++;
   console.log("FAIL   golden file itself no longer passes the full check");
 } else {
   console.log("OK     unmutated golden file still passes");
+}
+const cleanI = spawnSync(process.execPath, [CHECK, join(INTERACTIVE_ROOT, "auth-calcification-audit.json"), INTERACTIVE_ROOT], { encoding: "utf8" });
+if (cleanI.status !== 0) {
+  failures++;
+  console.log("FAIL   interactive fixture no longer passes the full check");
+} else {
+  console.log("OK     unmutated interactive fixture still passes");
 }
 
 process.exit(failures ? 1 : 0);

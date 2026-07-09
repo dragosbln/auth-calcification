@@ -55,6 +55,29 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[`*']/g, "").replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+/** content words (length > 2) of a string, as a set */
+function tokenSet(s: string): Set<string> {
+  return new Set(normalize(s).split(" ").filter((t) => t.length > 2));
+}
+
+function overlapCount(a: Set<string>, b: Set<string>): number {
+  let n = 0;
+  for (const t of a) if (b.has(t)) n++;
+  return n;
+}
+
+/** the text of the first numbered item under the summary's "Top moves" heading */
+function firstTopMove(summaryMd: string): string | null {
+  const lines = summaryMd.split("\n");
+  const start = lines.findIndex((l) => /top moves/i.test(l));
+  if (start < 0) return null;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*1[.)]\s+(.*)/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 function evidenceAnchorSet(doc: AuditDoc): Set<string> {
   const set = new Set<string>();
   for (const f of doc.findings) {
@@ -218,6 +241,44 @@ export function checkAgreement(doc: AuditDoc, reportMd: string, summaryMd: strin
   }
   if (doc.backlog !== null && !nSummary.includes("top moves")) {
     err("A5 summary: backlog present but 'Top moves' section missing");
+  }
+
+  // --- A7: a ranked backlog must surface in the views ---
+  if (doc.backlog && doc.backlog.length) {
+    // The report enumerates the full backlog verbosely, so token-containment is
+    // the right tool there: every task must be reflected.
+    const nReport = normalize(reportMd);
+    doc.backlog.forEach((item, i) => {
+      const tokens = normalize(item.task).split(" ").filter((t) => t.length > 2);
+      const hit = tokens.filter((t) => nReport.includes(t)).length;
+      if (tokens.length && hit / tokens.length < 0.7) {
+        err(`A7 report: backlog[${i}] task '${item.task}' not reflected (${hit}/${tokens.length} tokens)`);
+      }
+    });
+    // The summary COMPRESSES — a good "Top moves #1" is a headline, not the full
+    // task text — so absolute containment is the wrong tool (it punishes good
+    // compression). Verify the real property instead: the summary's lead move
+    // corresponds to backlog #1 more than to any other task (nearest-match).
+    // This is robust to how aggressively the headline is trimmed and still
+    // catches a genuinely reordered/replaced lead. (Whether the headline is
+    // well-written is a judge-layer question, out of scope here.)
+    const lead = firstTopMove(summaryMd);
+    if (lead === null) {
+      err("A7 summary: backlog is present but no numbered 'Top moves' item was found");
+    } else {
+      const leadTokens = tokenSet(lead);
+      const scores = doc.backlog.map((b) => overlapCount(leadTokens, tokenSet(b.task)));
+      const bestScore = Math.max(...scores);
+      const best = scores.indexOf(bestScore);
+      if (bestScore === 0) {
+        err(`A7 summary: lead Top move shares no content with any backlog task ('${lead.slice(0, 60)}…')`);
+      } else if (best !== 0) {
+        err(
+          `A7 summary: lead Top move matches backlog #${best + 1}, not the #1-ranked task ` +
+            `('${doc.backlog[0].task.slice(0, 50)}…')`,
+        );
+      }
+    }
   }
 
   // --- A6: posture ---

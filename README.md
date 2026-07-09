@@ -85,6 +85,25 @@ Skip the interview and get straight to findings:
 
 Use this for CI runs, batch audits, or when you want findings without being prompted.
 
+### Pre-filled answers (`_interview.yaml`)
+
+Drop an `_interview.yaml` at your project root to supply the judgment answers up front — the skill reads it instead of interviewing you, and the report records that inputs came from a file rather than a live conversation:
+
+```yaml
+storage:
+  answer: "Yes — planned"
+  notes: "moving to HttpOnly cookies next quarter"
+  cost_confirmed: moderate
+refresh:
+  answer: "Tied to storage"
+identity_provider:
+  answer: "No — locked in"
+authorization:
+  answer: "Don't know"
+```
+
+Useful for consultants pre-filling a client's known answers before a call, and for deterministic testing of interactive mode. Axes you omit (or answer "Don't know") route to "Judgment calls for you."
+
 ### What the skill does
 
 1. **Detect vendors** (reads `package.json`, loads matching profiles)

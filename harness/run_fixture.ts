@@ -55,6 +55,11 @@ const DEFAULT_MODEL = "claude-opus-4-7";
 const fixture = positional[0] ?? "calcified-cognito";
 const model = flag("model") ?? DEFAULT_MODEL;
 const maxTurns = flag("max-turns") ?? "150";
+// --interactive: copy harness/interviews/<fixture>.yaml into the workspace as
+// _interview.yaml and run Phase 2 file-driven — deterministic "interactive"
+// mode. The canned answers live in the harness (not the fixture), so default
+// runs stay non-interactive and the runner controls the mode.
+const interactive = argv.includes("--interactive");
 
 const fixtureDir = join(REPO, "fixtures", fixture);
 if (!existsSync(fixtureDir)) {
@@ -79,11 +84,25 @@ cpSync(fixtureDir, workspace, {
 });
 console.log(`workspace: ${workspace}`);
 
+if (interactive) {
+  const interviewSrc = join(HARNESS_DIR, "interviews", `${fixture}.yaml`);
+  if (!existsSync(interviewSrc)) {
+    console.error(`--interactive requires ${interviewSrc} (the canned answers for this fixture)`);
+    process.exit(2);
+  }
+  cpSync(interviewSrc, join(workspace, "_interview.yaml"));
+  console.log(`interactive: answers file staged as _interview.yaml`);
+}
+
 // --- 2. headless skill run ---
-const PROMPT =
-  "Run the auth-calcification-audit skill on this repository with interactive=false. " +
-  "Audit the current directory. Work fully autonomously — do not ask the user anything. " +
-  "Save all artifacts to the repository root exactly as the skill specifies.";
+const PROMPT = interactive
+  ? "Run the auth-calcification-audit skill on this repository with interactive=true. " +
+    "The maintainer's judgment answers are pre-filled in _interview.yaml at the repository " +
+    "root — read them from there exactly as the skill specifies; do NOT ask the user anything. " +
+    "Audit the current directory and save all artifacts to the repository root."
+  : "Run the auth-calcification-audit skill on this repository with interactive=false. " +
+    "Audit the current directory. Work fully autonomously — do not ask the user anything. " +
+    "Save all artifacts to the repository root exactly as the skill specifies.";
 
 const claudeBin = process.env.CLAUDE_BIN ?? "claude";
 const args = [
@@ -174,7 +193,9 @@ if (res.errors.length) {
 }
 
 // --- 5. fixture ground truth, when this fixture has an expectation file ---
-const expPath = join(HARNESS_DIR, "expectations", `${fixture}.json`);
+// interactive runs assert against a separate spec: same mechanical ground
+// truth, plus the interview/backlog/migration surface the answers file unlocks
+const expPath = join(HARNESS_DIR, "expectations", interactive ? `${fixture}-interactive.json` : `${fixture}.json`);
 if (existsSync(expPath)) {
   const exp = JSON.parse(readFileSync(expPath, "utf8")) as FixtureExpectations;
   const expErrors = evaluate(doc as AuditDoc, exp.assertions);

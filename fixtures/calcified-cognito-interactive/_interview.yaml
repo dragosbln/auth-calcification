@@ -1,0 +1,18 @@
+# Canned maintainer answers for deterministic interactive-mode testing.
+# run_fixture.ts --interactive copies this into the workspace as _interview.yaml;
+# the skill reads it instead of running the live AskUserQuestion interview.
+#
+# Chosen to exercise every branch: all four likelihood tiers (high / medium /
+# none via "locked in" / high), an optional cost_confirmed, and notes.
+storage:
+  answer: "Yes — planned"
+  notes: "moving token storage to HttpOnly cookies next quarter"
+  cost_confirmed: moderate
+refresh:
+  answer: "Tied to storage"
+identity_provider:
+  answer: "No — locked in"
+  notes: "enterprise agreement runs through 2027"
+authorization:
+  answer: "RBAC/ABAC or finer permissions"
+  notes: "roles are outgrowing the current admin flag"

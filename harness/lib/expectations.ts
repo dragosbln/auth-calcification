@@ -36,7 +36,8 @@ export interface Assertion {
   isNull?: boolean;
   length?: number;
   minLength?: number;
-  some?: Record<string, unknown>;
+  /** array has ≥1 element matching: object pattern = subset match on fields; primitive = deep equality */
+  some?: unknown;
   /** human context, printed on failure */
   note?: string;
 }
@@ -63,9 +64,12 @@ function deepEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function subsetMatch(item: unknown, pattern: Record<string, unknown>): boolean {
+function subsetMatch(item: unknown, pattern: unknown): boolean {
+  if (pattern === null || typeof pattern !== "object") return deepEqual(item, pattern);
   if (item === null || typeof item !== "object") return false;
-  return Object.entries(pattern).every(([k, v]) => deepEqual((item as Record<string, unknown>)[k], v));
+  return Object.entries(pattern as Record<string, unknown>).every(([k, v]) =>
+    deepEqual((item as Record<string, unknown>)[k], v),
+  );
 }
 
 function vendorId(doc: AuditDoc, profile?: string): string {
@@ -113,7 +117,7 @@ export function evaluate(doc: AuditDoc, assertions: Assertion[]): string[] {
     if (a.minLength !== undefined && (!Array.isArray(value) || value.length < a.minLength)) {
       fail(`expected array of length >= ${a.minLength}, got ${Array.isArray(value) ? value.length : fmt(value)}`);
     }
-    if (a.some && (!Array.isArray(value) || !value.some((item) => subsetMatch(item, a.some as Record<string, unknown>)))) {
+    if (a.some !== undefined && (!Array.isArray(value) || !value.some((item) => subsetMatch(item, a.some)))) {
       fail(`no element matching ${fmt(a.some)}`);
     }
   }

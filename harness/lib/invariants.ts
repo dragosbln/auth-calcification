@@ -14,6 +14,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AXES } from "./types.ts";
 import type { AuditDoc, Finding } from "./types.ts";
+import { LIKELIHOOD_MAPPING, loadInterviewFile } from "./interview.ts";
 
 const DURATION_RX =
   /\b\d+(\.\d+)?\s*(-\s*\d+(\.\d+)?\s*)?(hour|hr|day|week|sprint|month|dev-week|man-day|person-day)s?\b/i;
@@ -161,6 +162,16 @@ export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResul
   if (interview === null && doc.migration_readiness !== null) {
     err("I6 migration_readiness produced without any interview input");
   }
+  if (interview !== null && doc.meta.mode !== "interactive") {
+    err("I6 interview present but meta.mode is not 'interactive' (Phase 2 ran in a mode that forbids it)");
+  }
+  const anyLikelihood = AXES.some((a) => doc.axes[a].likelihood !== null);
+  if (anyLikelihood && doc.backlog === null) {
+    err("I6 likelihood was supplied but backlog is null — the maintainer answered; the ranking is owed");
+  }
+  if (doc.backlog !== null && !anyLikelihood) {
+    err("I6 backlog ranked without any likelihood input on any axis");
+  }
 
   // I7: undetermined/other pairing rules
   const checkHatches = (classification: string, findingIds: string[], vendor: string, where: string) => {
@@ -182,6 +193,46 @@ export function checkInvariants(doc: AuditDoc, codeRoot: string): InvariantResul
         if (value !== undefined) checkHatches(value, pv.finding_ids, vendor, `axes.${axis}.${vendor}.${key}`);
       }
     }
+  }
+
+  // I9: answers-file fidelity. When the audited root carries _interview.yaml,
+  // the file is GROUND-TRUTH INPUT — the one part of the run whose correct
+  // output is fully known in advance. The JSON must reproduce it faithfully:
+  // answers verbatim, likelihood per the documented mapping, cost_confirmed
+  // honored. This is the input→output check that live interviews can't have.
+  const interviewPath = join(codeRoot, "_interview.yaml");
+  if (existsSync(interviewPath)) {
+    const file = loadInterviewFile(interviewPath);
+    if (interview === null) {
+      warn("I9 _interview.yaml present but interview is null (deliberate non-interactive run?)");
+    } else {
+      if (interview.source !== "file") {
+        err(`I9 _interview.yaml present but interview.source is '${interview.source}', not 'file'`);
+      }
+      const fileAxes = Object.keys(file).sort().join(",");
+      const jsonAxes = Object.keys(interview.answers).sort().join(",");
+      if (fileAxes !== jsonAxes) {
+        err(`I9 answered axes mismatch: file has [${fileAxes}], interview.answers has [${jsonAxes}]`);
+      }
+      for (const axis of AXES) {
+        const fromFile = file[axis];
+        if (!fromFile) continue;
+        const recorded = interview.answers[axis];
+        if (recorded && recorded.answer !== fromFile.answer) {
+          err(`I9 ${axis}: answer recorded as '${recorded.answer}' but the file says '${fromFile.answer}' — the human's words, verbatim`);
+        }
+        const expected = LIKELIHOOD_MAPPING[axis][fromFile.answer];
+        if (expected !== undefined && doc.axes[axis].likelihood !== expected) {
+          err(`I9 ${axis}: likelihood '${doc.axes[axis].likelihood}' does not match the documented mapping ('${fromFile.answer}' → ${expected})`);
+        }
+        const cc = doc.axes[axis].cost_confirmed ?? null;
+        if (cc !== (fromFile.cost_confirmed ?? null)) {
+          err(`I9 ${axis}: cost_confirmed '${cc}' but the file says '${fromFile.cost_confirmed ?? null}'`);
+        }
+      }
+    }
+  } else if (interview?.source === "file") {
+    err("I9 interview.source is 'file' but no _interview.yaml exists at the audited root");
   }
 
   // I8: no duration language in the SKILL'S OWN VOICE. Human-attributed text

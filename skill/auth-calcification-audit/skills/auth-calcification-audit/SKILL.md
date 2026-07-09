@@ -1,6 +1,6 @@
 ---
 name: auth-calcification-audit
-version: 1.3.0
+version: 1.4.0
 description: >-
   Audit a codebase for authentication calcification risk — how tightly its auth is
   wired to a vendor's defaults (token storage, refresh, identity provider,
@@ -20,7 +20,9 @@ parameters:
     default: true
     description: >-
       Run the judgment interview (Phase 2). When true, ask the maintainer
-      likelihood-of-change and cost-to-retrofit questions to enable prioritization.
+      likelihood-of-change and cost-to-retrofit questions to enable prioritization
+      — unless the audited root contains an `_interview.yaml` answers file, in
+      which case answers are read from it instead of asking (see Phase 2).
       When false, skip the interview and route all judgment questions to the
       "Judgment calls for you" section with no priority ranking.
 ---
@@ -66,7 +68,15 @@ Follow `references/detection-playbook.md` step by step.
 
 ### Phase 2 — Judgment interview (ask what only the human knows)
 
-**If `interactive` is true (default):** Briefly present the findings grouped by axis (one or two sentences per axis is enough — the full report comes in Phase 3), then ask the maintainer the questions the code can't answer.
+**Answers file (`_interview.yaml`):** before asking anything, check the audited root for `_interview.yaml`. If it exists (and `interactive` is true), do NOT call `AskUserQuestion` — the maintainer pre-filled their answers:
+- Each top-level key is an axis (`storage`, `refresh`, `identity_provider`, `authorization`) with `answer` (ideally one of the option labels below; free text is accepted), optional `notes`, and optional `cost_confirmed` (low / moderate / high).
+- Record each `answer` **verbatim** in `interview.answers`, set `interview.source: "file"`, apply the same likelihood mapping table below, and put `cost_confirmed` on that axis.
+- Axes missing from the file route to "Judgment calls for you" (likelihood null), exactly like a "Don't know."
+- Both rendered views must state that judgment inputs came from a pre-filled file, not a live conversation.
+
+This doubles as a product affordance: a consultant can pre-fill a client's known answers before a call instead of blocking on synchronous Q&A.
+
+**If `interactive` is true (default) and no answers file exists:** Briefly present the findings grouped by axis (one or two sentences per axis is enough — the full report comes in Phase 3), then ask the maintainer the questions the code can't answer.
 
 **How to ask:** Use the `AskUserQuestion` tool — the multiple-choice prompt Claude Code provides natively — to ask the questions **one at a time, in order**. Do NOT batch all four into a single text prompt; the experience is markedly better when questions are presented one-by-one with concrete options. After each answer, briefly acknowledge ("Got it — likely Q3") and move on to the next axis. If the maintainer says "skip" or "stop" mid-flow, accept it and proceed to compose the report with what you have; unanswered axes go to "Judgment calls for you."
 
@@ -125,7 +135,7 @@ Record each answer **verbatim** — the chosen option label plus anything else t
 
 A `null` likelihood routes that axis to "Judgment calls for you."
 
-**If `interactive` is false:** Skip the interview entirely. Do NOT call `AskUserQuestion`. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted.
+**If `interactive` is false:** Skip the interview entirely — even if an `_interview.yaml` file exists. Do NOT call `AskUserQuestion`. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted.
 
 ### Phase 3 — Compose (JSON first, then two rendered views)
 
