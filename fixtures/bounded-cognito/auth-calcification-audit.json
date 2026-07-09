@@ -1,0 +1,616 @@
+{
+  "schema_version": "1.2",
+  "meta": {
+    "scope": "bounded-cognito fixture (harness workspace)",
+    "date": "2026-07-08",
+    "skill_version": "1.3.0",
+    "model_self_reported": "Claude Opus 4.7",
+    "disclaimer_fired": false,
+    "mode": "non-interactive"
+  },
+  "vendors": [
+    {
+      "id": "cognito",
+      "detected": "AWS Amplify v6.6.0 (Cognito)",
+      "sdk_version": "aws-amplify@^6.6.0",
+      "profile": "amplify-cognito.md",
+      "profile_verified": "2026-06-17"
+    }
+  ],
+  "coverage": {
+    "comprehensive": [
+      {
+        "path": "package.json",
+        "reason": "Vendor detection and version pinning."
+      },
+      {
+        "path": "src/auth/types.ts",
+        "reason": "Domain vocabulary (Session, Principal, AuthError)."
+      },
+      {
+        "path": "src/auth/port.ts",
+        "reason": "AuthPort interface — the boundary contract."
+      },
+      {
+        "path": "src/auth/context.tsx",
+        "reason": "Port injection surface for React tree."
+      },
+      {
+        "path": "src/auth/adapters/cognito.ts",
+        "reason": "The adapter — only file allowed to import the vendor; profile names storage/refresh/claim/token-type mechanics load-bearing here."
+      },
+      {
+        "path": "src/auth/refresh.ts",
+        "reason": "Single-flight refresh helper — the owned-behavior nucleus for Axis 2."
+      },
+      {
+        "path": "src/auth/policy.ts",
+        "reason": "Authorization decisions — the sole call site the design intends for Axis 4."
+      },
+      {
+        "path": "src/api/client.ts",
+        "reason": "API client — 401/refresh/failure path and the injection call site."
+      },
+      {
+        "path": "src/components/UserBadge.tsx",
+        "reason": "App-layer component — proves the boundary is actually used."
+      },
+      {
+        "path": "src/components/AdminPanel.tsx",
+        "reason": "App-layer component — verifies authz reads go through the policy, not claims."
+      },
+      {
+        "path": "src/pages/Profile.tsx",
+        "reason": "App-layer page — verifies domain-Principal reads only."
+      },
+      {
+        "path": "__tests__/auth-contract.test.ts",
+        "reason": "Contract-suite candidate for B3 assessment."
+      }
+    ],
+    "sampled": [],
+    "gaps": []
+  },
+  "findings": [
+    {
+      "id": "boundary-cognito-vendor-imports-localized",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Vendor imports from aws-amplify are confined to the single adapter file src/auth/adapters/cognito.ts; no other application-layer file imports the vendor.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 6,
+          "quote": "import { fetchAuthSession, signOut } from \"aws-amplify/auth\";"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 7,
+          "quote": "import { cognitoUserPoolsTokenProvider } from \"aws-amplify/auth/cognito\";"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 8,
+          "quote": "import type { KeyValueStorageInterface } from \"aws-amplify/utils\";"
+        }
+      ],
+      "note": "A repo-wide grep for aws-amplify / amazon-cognito / fetchAuthSession / AuthSession / AuthUser / setKeyValueStorage returns hits only inside the adapter and inside the mocks in __tests__/auth-contract.test.ts — the latter is expected (the contract test intentionally stubs the vendor at the import boundary)."
+    },
+    {
+      "id": "boundary-cognito-no-vendor-types-in-app",
+      "vendor": "cognito",
+      "claim": "absence",
+      "statement": "No vendor types (AuthSession, AuthTokens, JWT, AuthUser, FetchUserAttributesOutput, Amplify AuthError) appear as parameter types, return types, or exported types in application-layer code outside the adapter.",
+      "checked_patterns": [
+        "AuthSession",
+        "AuthTokens",
+        "AuthUser",
+        "FetchUserAttributesOutput",
+        "JWT (from aws-amplify/auth)",
+        "Amplify AuthError (distinct from the domain AuthError defined in src/auth/types.ts)"
+      ],
+      "searched": [
+        "src/components/**",
+        "src/pages/**",
+        "src/api/**",
+        "src/auth/context.tsx",
+        "src/auth/port.ts",
+        "src/auth/policy.ts",
+        "src/auth/refresh.ts",
+        "src/auth/types.ts"
+      ],
+      "note": "Domain AuthError is defined in src/auth/types.ts as a local class — it is not the vendor's error and does not constitute a leak."
+    },
+    {
+      "id": "boundary-cognito-authport-interface",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "An AuthPort-shaped contract exists — the boundary the app depends on.",
+      "evidence": [
+        {
+          "file": "src/auth/port.ts",
+          "line": 6,
+          "quote": "export interface AuthPort {"
+        }
+      ]
+    },
+    {
+      "id": "boundary-cognito-injected-api-client",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "The API client receives the AuthPort by injection, not by importing a vendor singleton.",
+      "evidence": [
+        {
+          "file": "src/api/client.ts",
+          "line": 7,
+          "quote": "export function createApiClient(auth: AuthPort) {"
+        }
+      ]
+    },
+    {
+      "id": "boundary-cognito-context-injects-port",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "AuthProvider injects an AuthPort instance into React context; components read domain Principal via useAuth() without touching the vendor.",
+      "evidence": [
+        {
+          "file": "src/auth/context.tsx",
+          "line": 17,
+          "quote": "  auth: AuthPort;"
+        },
+        {
+          "file": "src/auth/context.tsx",
+          "line": 22,
+          "quote": "    auth.getPrincipal().then(setPrincipal);"
+        }
+      ]
+    },
+    {
+      "id": "boundary-cognito-contract-suite",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "A conformance suite is written against AuthPort and runs against both a FakeAuth and the real CognitoAuthAdapter — the migration-readiness signal for B3.",
+      "evidence": [
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 50,
+          "quote": "export function runAuthContractTests("
+        },
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 100,
+          "quote": "runAuthContractTests(\"FakeAuth\", () => new FakeAuth());"
+        },
+        {
+          "file": "__tests__/auth-contract.test.ts",
+          "line": 128,
+          "quote": "runAuthContractTests(\"CognitoAuthAdapter\", async () => {"
+        }
+      ],
+      "note": "Assertions target the domain shape only (see line 76: expect(key.startsWith(\"cognito:\")).toBe(false)); the vendor is mocked at the import boundary rather than being asserted on."
+    },
+    {
+      "id": "boundary-cognito-no-ssr-surface",
+      "vendor": "cognito",
+      "claim": "absence",
+      "statement": "No server-rendered auth surface exists in this codebase: no SSR adapter imports, no createServerRunner / runWithAmplifyServerContext, and no client-vs-server branching to obtain auth.",
+      "checked_patterns": [
+        "aws-amplify/auth/server import",
+        "@aws-amplify/adapter-nextjs import",
+        "createServerRunner",
+        "runWithAmplifyServerContext",
+        "typeof window branching to select an auth path",
+        "Amplify.configure(..., { ssr: true })"
+      ],
+      "searched": [
+        "package.json",
+        "src/**",
+        "__tests__/**"
+      ],
+      "note": "React-only client app (react@18 declared; no next / Nuxt / SSR runtime declared). The client/server split does not arise here, so B4 is not applicable rather than absent."
+    },
+    {
+      "id": "storage-cognito-custom-adapter",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Token storage is a custom adapter implementing KeyValueStorageInterface, plugged into the v6 storage seam via cognitoUserPoolsTokenProvider.setKeyValueStorage — not the vendor default localStorage and not a built-in selector.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 16,
+          "quote": "class MemoryKeyValueStorage implements KeyValueStorageInterface {"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 32,
+          "quote": "cognitoUserPoolsTokenProvider.setKeyValueStorage(new MemoryKeyValueStorage());"
+        }
+      ],
+      "note": "This is a user-defined class implementing the interface, not a built-in selector (defaultStorage / sessionStorage / new CookieStorage()) — the look-alike distinction the profile calls out. Caveat from the profile: setKeyValueStorage overrides the TokenStore only; if Cognito Identity Pools were in use, identityId would remain in localStorage. Identity Pool usage was NOT detected in this codebase, so that caveat does not currently apply."
+    },
+    {
+      "id": "storage-cognito-v5-patterns-absent",
+      "vendor": "cognito",
+      "claim": "absence",
+      "statement": "No Amplify v5 storage-configuration patterns appear (the codebase is confirmed v6 by package.json).",
+      "checked_patterns": [
+        "Amplify.configure({ Auth: { cookieStorage: { domain, path, expires, ... } } }) — v5 built-in selector",
+        "Amplify.configure({ Auth: { storage: <class> } }) — v5 custom storage class",
+        "Auth.configure singleton pattern"
+      ],
+      "searched": [
+        "src/**",
+        "package.json"
+      ],
+      "note": "Recorded to satisfy the playbook's rule that a storage claim under Amplify must be checked against BOTH v5 and v6 patterns."
+    },
+    {
+      "id": "refresh-cognito-single-flight-helper",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "A single-flight refresh helper deduplicates N concurrent 401s into a single refresh call.",
+      "evidence": [
+        {
+          "file": "src/auth/refresh.ts",
+          "line": 6,
+          "quote": "export function refreshOnce("
+        },
+        {
+          "file": "src/auth/refresh.ts",
+          "line": 9,
+          "quote": "  inflight ??= doRefresh().finally(() => {"
+        }
+      ]
+    },
+    {
+      "id": "refresh-cognito-401-owned-path",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "The API client owns the 401 path: on 401 it calls onRefresh, retries once on success, and routes to onSessionExpired on failure — reactive, single-flight, with an explicit failure route.",
+      "evidence": [
+        {
+          "file": "src/api/client.ts",
+          "line": 19,
+          "quote": "    if (res.status === 401 && (await auth.onRefresh())) {"
+        },
+        {
+          "file": "src/api/client.ts",
+          "line": 22,
+          "quote": "    if (res.status === 401) {"
+        },
+        {
+          "file": "src/api/client.ts",
+          "line": 23,
+          "quote": "      auth.onSessionExpired();"
+        }
+      ]
+    },
+    {
+      "id": "refresh-cognito-force-refresh-in-adapter",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "The adapter's onRefresh drives refresh through the single-flight helper using fetchAuthSession({ forceRefresh: true }) — refresh is explicit, not inherited vendor magic.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 58,
+          "quote": "  async onRefresh(): Promise<boolean> {"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 61,
+          "quote": "        const session = await fetchAuthSession({ forceRefresh: true });"
+        }
+      ]
+    },
+    {
+      "id": "refresh-cognito-explicit-session-expired",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "An explicit session-expired failure route exists on the port and is invoked from the 401 path.",
+      "evidence": [
+        {
+          "file": "src/auth/port.ts",
+          "line": 10,
+          "quote": "  onSessionExpired(): void;"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 69,
+          "quote": "  onSessionExpired(): void {"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 71,
+          "quote": "    throw new AuthError(\"session expired\", \"session-expired\");"
+        }
+      ]
+    },
+    {
+      "id": "identity-cognito-claim-names-localized-to-adapter",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Cognito-specific claim names (cognito:groups, custom:tenantId) appear only inside the adapter's getPrincipal, where they are mapped into a domain Principal.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 53,
+          "quote": "      tenantId: idPayload[\"custom:tenantId\"] as string | undefined,"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 54,
+          "quote": "      roles: (idPayload[\"cognito:groups\"] as string[] | undefined) ?? [],"
+        }
+      ]
+    },
+    {
+      "id": "identity-cognito-no-app-layer-claim-reads",
+      "vendor": "cognito",
+      "claim": "absence",
+      "statement": "No inline reads of vendor claim shapes or vendor-namespaced features appear in application-layer code.",
+      "checked_patterns": [
+        "cognito: (namespaced claim access — cognito:groups, cognito:username, etc.)",
+        "custom: (custom attribute access via idToken.payload)",
+        "idToken.payload[...] direct access",
+        "fetchUserAttributes / updateUserAttributes",
+        "AdminGetUser / AdminAddUserToGroup / ListUsers (admin SDK usage)",
+        "hard-coded role/group string literals matched against claim reads"
+      ],
+      "searched": [
+        "src/components/**",
+        "src/pages/**",
+        "src/api/**",
+        "src/auth/context.tsx",
+        "src/auth/policy.ts",
+        "src/auth/refresh.ts",
+        "src/auth/types.ts",
+        "src/auth/port.ts"
+      ]
+    },
+    {
+      "id": "authz-cognito-access-token-attached-to-api",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Outbound API calls are authorized with the access token, not the ID token — the profile's hardening recommendation for Cognito apps is already met.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 42,
+          "quote": "    const accessToken = session.tokens?.accessToken?.toString();"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 43,
+          "quote": "    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};"
+        }
+      ]
+    },
+    {
+      "id": "authz-cognito-policy-layer",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Authorization decisions run through a single policy function taking a domain Principal — the boundary produces a Principal (with domain roles), and can(principal, action) is the sole authorization site.",
+      "evidence": [
+        {
+          "file": "src/auth/policy.ts",
+          "line": 8,
+          "quote": "const ROLES: Record<Action, string[]> = {"
+        },
+        {
+          "file": "src/auth/policy.ts",
+          "line": 13,
+          "quote": "export function can(principal: Principal | null, action: Action): boolean {"
+        }
+      ]
+    },
+    {
+      "id": "authz-cognito-components-ask-policy",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Application components call the policy function rather than reading claim/role strings inline.",
+      "evidence": [
+        {
+          "file": "src/components/AdminPanel.tsx",
+          "line": 10,
+          "quote": "  if (!can(principal, \"admin.view\")) return null;"
+        },
+        {
+          "file": "src/components/UserBadge.tsx",
+          "line": 12,
+          "quote": "      {principal.email} {can(principal, \"admin.view\") ? \"(admin)\" : \"\"}"
+        }
+      ]
+    }
+  ],
+  "boundary": {
+    "cognito": {
+      "b1_anti_corruption": {
+        "status": "present",
+        "finding_ids": [
+          "boundary-cognito-vendor-imports-localized",
+          "boundary-cognito-no-vendor-types-in-app"
+        ],
+        "note": "Vendor imports and vendor types confined to the adapter; no leak into components, pages, or API code."
+      },
+      "b2_injected": {
+        "status": "present",
+        "finding_ids": [
+          "boundary-cognito-authport-interface",
+          "boundary-cognito-injected-api-client",
+          "boundary-cognito-context-injects-port"
+        ],
+        "note": "AuthPort interface exists and is threaded via a factory (createApiClient) and React context — no module-level vendor singleton is imported by app code."
+      },
+      "b3_contract_tested": {
+        "status": "present",
+        "finding_ids": [
+          "boundary-cognito-contract-suite"
+        ],
+        "note": "runAuthContractTests asserts against the domain shape and runs against both FakeAuth and the real CognitoAuthAdapter — migration = new adapter that passes this suite."
+      },
+      "b4_client_server_split": {
+        "status": "not_applicable",
+        "finding_ids": [
+          "boundary-cognito-no-ssr-surface"
+        ],
+        "note": "React-only client app; no SSR surface (no Next.js / adapter-nextjs / server-import path). The concern does not arise here."
+      }
+    }
+  },
+  "axes": {
+    "storage": {
+      "per_vendor": {
+        "cognito": {
+          "classification": "custom_adapter",
+          "finding_ids": [
+            "storage-cognito-custom-adapter",
+            "storage-cognito-v5-patterns-absent"
+          ],
+          "note": "MemoryKeyValueStorage implements KeyValueStorageInterface and is plugged into cognitoUserPoolsTokenProvider.setKeyValueStorage — a user-defined class, not a built-in selector. Storage in this codebase is swappable at one call site."
+        }
+      },
+      "recommended_seam": "Custom KeyValueStorageInterface implementation passed to cognitoUserPoolsTokenProvider.setKeyValueStorage — already in place. A move to HttpOnly cookies would replace the MemoryKeyValueStorage class body without changing any call site.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "low",
+        "basis": "The v6 storage seam is already taken by a custom adapter at src/auth/adapters/cognito.ts:32; retrofit to a different storage backend is confined to swapping the MemoryKeyValueStorage class inside the adapter file (single file, no call-site changes).",
+        "finding_ids": [
+          "storage-cognito-custom-adapter"
+        ]
+      }
+    },
+    "refresh": {
+      "per_vendor": {
+        "cognito": {
+          "classification": "owned",
+          "finding_ids": [
+            "refresh-cognito-single-flight-helper",
+            "refresh-cognito-401-owned-path",
+            "refresh-cognito-force-refresh-in-adapter",
+            "refresh-cognito-explicit-session-expired"
+          ],
+          "note": "Reactive 401-interceptor with single-flight dedup and an explicit onSessionExpired failure path. The adapter forces refresh via fetchAuthSession({ forceRefresh: true }) rather than relying on Amplify's silent-refresh magic."
+        }
+      },
+      "recommended_seam": "401 interceptor in the injected API client → auth.onRefresh() (single-flight) → retry once → auth.onSessionExpired() on failure. Already in place at src/api/client.ts and src/auth/refresh.ts.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "low",
+        "basis": "Refresh is already owned: the helper (src/auth/refresh.ts:6), the 401 path (src/api/client.ts:19), and the explicit expiry route (src/auth/adapters/cognito.ts:71) are in place. Moving to a different refresh strategy (e.g. HttpOnly-cookie server refresh) changes the adapter's onRefresh body and does not require altering call sites.",
+        "finding_ids": [
+          "refresh-cognito-single-flight-helper",
+          "refresh-cognito-401-owned-path"
+        ]
+      }
+    },
+    "identity_provider": {
+      "per_vendor": {
+        "cognito": {
+          "classification": "localized",
+          "finding_ids": [
+            "identity-cognito-claim-names-localized-to-adapter",
+            "identity-cognito-no-app-layer-claim-reads",
+            "boundary-cognito-vendor-imports-localized"
+          ],
+          "note": "Cognito-specific surface (cognito:groups, custom:tenantId, aws-amplify imports, setKeyValueStorage) appears only in src/auth/adapters/cognito.ts. The rest of the app speaks the domain shapes defined in src/auth/types.ts."
+        }
+      },
+      "recommended_seam": "Provider-specific behavior confined to one adapter file that implements AuthPort. A provider swap = write a sibling adapter (e.g. Auth0) that passes runAuthContractTests. Already the shape here.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "low",
+        "basis": "Vendor imports and claim names are localized to a single file (src/auth/adapters/cognito.ts). Coupling spread outside the adapter = zero confirmed hits across src/components/**, src/pages/**, src/api/**, and the remaining src/auth/** files. Swap = one new adapter + green contract suite.",
+        "finding_ids": [
+          "identity-cognito-claim-names-localized-to-adapter",
+          "boundary-cognito-vendor-imports-localized"
+        ]
+      }
+    },
+    "authorization": {
+      "per_vendor": {
+        "cognito": {
+          "claims_handling": "policy_layer",
+          "api_token_type": "access_token",
+          "finding_ids": [
+            "authz-cognito-policy-layer",
+            "authz-cognito-components-ask-policy",
+            "authz-cognito-access-token-attached-to-api",
+            "identity-cognito-no-app-layer-claim-reads"
+          ],
+          "note": "Domain Principal is mapped once (in the adapter's getPrincipal), then the sole authorization site is can(principal, action) in src/auth/policy.ts. Components ask the policy; they do not read claim shapes. API calls attach the access token (not the ID token) — the profile's Cognito-hardening default is met."
+        }
+      },
+      "recommended_seam": "The boundary produces a domain Principal; a single policy function is the only authorization decision site; API calls carry the access token. All in place.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "low",
+        "basis": "Authorization decisions run through one function (src/auth/policy.ts:13); zero inline claim reads confirmed across app layer; access token is already the API bearer. Moving to RBAC/ABAC or adding finer permissions edits the Principal shape and src/auth/policy.ts — no call-site sweep required.",
+        "finding_ids": [
+          "authz-cognito-policy-layer",
+          "authz-cognito-access-token-attached-to-api"
+        ]
+      }
+    }
+  },
+  "interview": null,
+  "judgment_calls": [
+    {
+      "axis": "storage",
+      "question": "Is a token storage change actually on the table (e.g., HttpOnly cookies, encrypted store, session cookies)?",
+      "context": "The seam already exists (custom KeyValueStorageInterface adapter plugged in at src/auth/adapters/cognito.ts:32), so a storage change stays inside that file. Whether it is worth doing now depends on the roadmap, which the code cannot see.",
+      "finding_ids": [
+        "storage-cognito-custom-adapter"
+      ]
+    },
+    {
+      "axis": "refresh",
+      "question": "Is owning refresh (or any other vendor-owned runtime behavior — sign-out propagation, multi-tab sync, silent re-auth) on the roadmap independently, or would it move only alongside a storage change?",
+      "context": "Refresh, single-flight dedup, and the explicit expiry route are already owned in this codebase. Sign-out cross-tab propagation via Amplify Hub is not wired — this is a deliberate design choice or a deferred item; only the maintainer knows which.",
+      "finding_ids": [
+        "refresh-cognito-single-flight-helper",
+        "refresh-cognito-401-owned-path"
+      ]
+    },
+    {
+      "axis": "identity_provider",
+      "question": "Is a provider swap realistic in the next 12–24 months, and how much vendor-specific behavior (Cognito groups, custom attributes) is acceptable to keep?",
+      "context": "The current shape localizes vendor-specific surface to a single adapter file, so a swap = one new adapter passing runAuthContractTests. Whether that's actually going to happen — or whether the defensive optionality is worth continued investment — is a roadmap call.",
+      "finding_ids": [
+        "identity-cognito-claim-names-localized-to-adapter",
+        "boundary-cognito-contract-suite"
+      ]
+    },
+    {
+      "axis": "authorization",
+      "question": "Are authorization-model changes planned (RBAC/ABAC, finer-grained permissions), and are any backend contracts assuming the current token/role shape?",
+      "context": "Access tokens already authorize the backend and one policy function is the only authorization site — the two calcification traps this axis catches are already avoided. Any evolution stays local to src/auth/policy.ts and the Principal shape, but whether the backend will accept those shapes is not visible in this repo.",
+      "finding_ids": [
+        "authz-cognito-policy-layer",
+        "authz-cognito-access-token-attached-to-api"
+      ]
+    },
+    {
+      "axis": null,
+      "question": "What is the true retrofit cost in your team's context (bandwidth, test coverage beyond the shipped contract suite, adjacent services that depend on the current shape)?",
+      "context": "The mechanical cost read on every axis is 'low' because the seams are in place; that is not the same as 'cheap in your calendar.' Real time-to-complete is yours to state.",
+      "finding_ids": []
+    }
+  ],
+  "backlog": null,
+  "migration_readiness": null,
+  "synthesis": {
+    "posture": "well-bounded; near migration-ready across all four axes",
+    "headline": {
+      "text": "The boundary is fully in place: aws-amplify imports, Cognito claim names, and the storage seam live only inside src/auth/adapters/cognito.ts; a runAuthContractTests suite in __tests__/auth-contract.test.ts:50 exercises the port against both a FakeAuth and the real CognitoAuthAdapter; refresh is owned (single-flight + explicit onSessionExpired); API calls carry the access token; and authorization decisions run through a domain Principal + can(principal, action) policy function. In migration-readiness terms this codebase is essentially at 'swap provider = new adapter that passes the contract suite' — the remaining calls are the maintainer's to make.",
+      "finding_ids": [
+        "boundary-cognito-vendor-imports-localized",
+        "boundary-cognito-contract-suite",
+        "storage-cognito-custom-adapter",
+        "refresh-cognito-401-owned-path",
+        "authz-cognito-access-token-attached-to-api",
+        "authz-cognito-policy-layer"
+      ]
+    }
+  }
+}

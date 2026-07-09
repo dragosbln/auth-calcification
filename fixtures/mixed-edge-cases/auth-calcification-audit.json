@@ -1,0 +1,677 @@
+{
+  "schema_version": "1.2",
+  "meta": {
+    "scope": "mixed-edge-cases fixture (workspace root, src/)",
+    "date": "2026-07-08",
+    "skill_version": "1.3.0",
+    "model_self_reported": "Claude Opus 4.7 (claude-opus-4-7)",
+    "disclaimer_fired": false,
+    "mode": "non-interactive"
+  },
+  "vendors": [
+    {
+      "id": "cognito",
+      "detected": "aws-amplify v6.6.0 (Amplify v6, modular aws-amplify/auth API)",
+      "sdk_version": "v6",
+      "profile": "amplify-cognito.md",
+      "profile_verified": "2026-06-17"
+    },
+    {
+      "id": "auth0",
+      "detected": "@auth0/auth0-spa-js v2.1.0",
+      "sdk_version": "v2",
+      "profile": "auth0.md",
+      "profile_verified": "2026-06-17"
+    },
+    {
+      "id": "firebase",
+      "detected": "firebase v10.7.0",
+      "profile": null
+    }
+  ],
+  "coverage": {
+    "comprehensive": [
+      {
+        "path": "package.json",
+        "reason": "Vendor detection and SDK version qualification."
+      },
+      {
+        "path": "src/auth/types.ts",
+        "reason": "Domain type surface for the new boundary; profile names domain-vs-vendor typing load-bearing."
+      },
+      {
+        "path": "src/auth/port.ts",
+        "reason": "AuthPort interface — the boundary contract itself."
+      },
+      {
+        "path": "src/auth/adapters/cognito.ts",
+        "reason": "Cognito adapter — the profile names storage config, refresh, and claim mapping as load-bearing; the look-alike storage trap lives here."
+      },
+      {
+        "path": "src/api/client.ts",
+        "reason": "API client — where the injected AuthPort is consumed and the 401/refresh path is defined."
+      },
+      {
+        "path": "src/components/NewProfile.tsx",
+        "reason": "Application-layer consumer of the new boundary; leak candidate for Cognito vendor types."
+      },
+      {
+        "path": "src/legacy/auth0-helpers.ts",
+        "reason": "Legacy Auth0 facade; profile names getTokenSilently-without-audience as load-bearing."
+      },
+      {
+        "path": "src/components/LegacyAdmin.tsx",
+        "reason": "Legacy Auth0 consumer; leak candidate for vendor types and namespaced-claim reads."
+      },
+      {
+        "path": "src/lib/firebase-analytics.ts",
+        "reason": "Firebase usage location — read to confirm scope (analytics) before recording as coverage gap; the skill still cannot safely classify without a profile."
+      }
+    ],
+    "sampled": [],
+    "gaps": [
+      {
+        "reason": "Firebase v10.7.0 is present in package.json and imported (firebase/app, firebase/analytics), but no vendors/firebase.md profile is available. Usage in this repo appears to be analytics, not auth — but the skill cannot verify that or assess any auth risk safely without a profile. Not assessed; NOT silently dropped.",
+        "path": "src/lib/firebase-analytics.ts",
+        "vendor": "firebase"
+      },
+      {
+        "reason": "No test files exist under the audited scope (no *.test.ts / *.spec.ts / __tests__ / test/ directories). The B3 (contract-tested) verdict of 'absent' therefore reflects the absence of tests entirely, not just the absence of contract-shaped tests — worth noting when reading that finding.",
+        "path": "src/"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "boundary-cognito-authport-interface",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "An `AuthPort` interface defines the auth boundary contract used by the new Cognito surface.",
+      "evidence": [
+        {
+          "file": "src/auth/port.ts",
+          "line": 6,
+          "quote": "export interface AuthPort {"
+        }
+      ]
+    },
+    {
+      "id": "boundary-cognito-domain-principal",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "A domain `Principal` type is defined and used by app code instead of the vendor's user shape.",
+      "evidence": [
+        {
+          "file": "src/auth/types.ts",
+          "line": 3,
+          "quote": "export interface Principal {"
+        }
+      ]
+    },
+    {
+      "id": "boundary-cognito-newprofile-uses-domain",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "The new profile component consumes the boundary only via the domain `Principal` type and the adapter class — no vendor types cross into this component.",
+      "evidence": [
+        {
+          "file": "src/components/NewProfile.tsx",
+          "line": 4,
+          "quote": "import type { Principal } from \"../auth/types\";"
+        },
+        {
+          "file": "src/components/NewProfile.tsx",
+          "line": 8,
+          "quote": "  const [principal, setPrincipal] = useState<Principal | null>(null);"
+        }
+      ]
+    },
+    {
+      "id": "boundary-cognito-api-injection",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "The API client takes `AuthPort` as an injected parameter and calls only through it (`getAuthHeaders`, `onRefresh`, `onSessionExpired`).",
+      "evidence": [
+        {
+          "file": "src/api/client.ts",
+          "line": 6,
+          "quote": "export function createApiClient(auth: AuthPort) {"
+        }
+      ]
+    },
+    {
+      "id": "boundary-auth0-vendor-types-leak-helpers",
+      "vendor": "auth0",
+      "claim": "presence",
+      "statement": "The legacy facade imports and returns Auth0's `User` and `Auth0Client` types directly, and calls the vendor SDK inline — no domain projection, no injected port.",
+      "evidence": [
+        {
+          "file": "src/legacy/auth0-helpers.ts",
+          "line": 5,
+          "quote": "import { createAuth0Client, type User, type Auth0Client } from \"@auth0/auth0-spa-js\";"
+        },
+        {
+          "file": "src/legacy/auth0-helpers.ts",
+          "line": 9,
+          "quote": "export async function getAuth0Client(): Promise<Auth0Client> {"
+        },
+        {
+          "file": "src/legacy/auth0-helpers.ts",
+          "line": 21,
+          "quote": "export async function getLegacyUser(): Promise<User | undefined> {"
+        }
+      ]
+    },
+    {
+      "id": "boundary-auth0-vendor-types-leak-component",
+      "vendor": "auth0",
+      "claim": "presence",
+      "statement": "An application component imports Auth0's `User` type from `@auth0/auth0-spa-js` directly and uses it as its own state type — the vendor shape crosses the boundary into the UI layer.",
+      "evidence": [
+        {
+          "file": "src/components/LegacyAdmin.tsx",
+          "line": 5,
+          "quote": "import { type User } from \"@auth0/auth0-spa-js\";"
+        },
+        {
+          "file": "src/components/LegacyAdmin.tsx",
+          "line": 9,
+          "quote": "  const [user, setUser] = useState<User | undefined>(undefined);"
+        }
+      ]
+    },
+    {
+      "id": "boundary-no-contract-suite",
+      "vendor": null,
+      "claim": "absence",
+      "statement": "No contract test suite exercises the `AuthPort` shape; the audited scope contains no test files of any kind.",
+      "note": "Reported as absence rather than partial because nothing tests the port shape independently of the vendor. See coverage.gaps for the caveat that the codebase has no tests at all.",
+      "checked_patterns": [
+        "*.test.ts / *.test.tsx",
+        "*.spec.ts / *.spec.tsx",
+        "__tests__/ directories",
+        "test/ and tests/ directories",
+        "runAuthContractTests-style suite name",
+        "AuthPort contract test filenames",
+        "vitest.config.* / jest.config.*"
+      ],
+      "searched": [
+        "repository root",
+        "src/",
+        "package.json (devDependencies for test runners)"
+      ]
+    },
+    {
+      "id": "boundary-no-ssr-surface",
+      "vendor": null,
+      "claim": "absence",
+      "statement": "No SSR or server-side auth surface exists: no Amplify server import specifiers, no Next.js adapter, no context branching in app code.",
+      "note": "Both vendor B4 assessments are `not_applicable`, backed by this finding — a determined fact, not an unknown.",
+      "checked_patterns": [
+        "aws-amplify/auth/server import specifier",
+        "@aws-amplify/adapter-nextjs (SSR adapter package)",
+        "createServerRunner call",
+        "runWithAmplifyServerContext call",
+        "Amplify.configure(..., { ssr: true })",
+        "@auth0/nextjs-auth0 / @auth0/nextjs-auth0/client",
+        "typeof window branching in app code",
+        "getServerSideProps / server component patterns"
+      ],
+      "searched": [
+        "src/",
+        "package.json"
+      ]
+    },
+    {
+      "id": "storage-cognito-builtin-selector",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Cognito storage is configured by passing the built-in `sessionStorage` selector from `aws-amplify/utils` into `setKeyValueStorage` — this is the profile's look-alike trap: a persistence selector, NOT a custom `KeyValueStorageInterface` implementation.",
+      "note": "The value passed is a vendor-supplied module import, not a user-defined class. Tokens remain vendor-managed and JS-readable; the app does not own storage.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 13,
+          "quote": "import { sessionStorage } from \"aws-amplify/utils\";"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 22,
+          "quote": "cognitoUserPoolsTokenProvider.setKeyValueStorage(sessionStorage);"
+        }
+      ]
+    },
+    {
+      "id": "storage-auth0-vendor-default",
+      "vendor": "auth0",
+      "claim": "absence",
+      "statement": "No `cache` (custom `ICache`) is passed to `createAuth0Client` and no `cacheLocation` selector is set — the SDK falls back to its in-memory default.",
+      "checked_patterns": [
+        "cache: <expression> in createAuth0Client options",
+        "cacheLocation: 'memory' | 'localstorage'",
+        "class implementing ICache (import ICache from @auth0/auth0-spa-js)",
+        "LocalStorageCache / InMemoryCache references",
+        "useRefreshTokens: true (mechanism, not storage — checked for completeness)"
+      ],
+      "searched": [
+        "src/legacy/auth0-helpers.ts",
+        "src/components/",
+        "src/"
+      ]
+    },
+    {
+      "id": "refresh-cognito-owned-401-path",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "A 401-interceptor plus explicit `onSessionExpired` failure path is owned by the API client and adapter, with `forceRefresh` driving the retry — an owned shape.",
+      "evidence": [
+        {
+          "file": "src/api/client.ts",
+          "line": 18,
+          "quote": "    if (res.status === 401 && (await auth.onRefresh())) {"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 47,
+          "quote": "      const session = await fetchAuthSession({ forceRefresh: true });"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 55,
+          "quote": "    throw new AuthError(\"session expired\", \"session-expired\");"
+        }
+      ]
+    },
+    {
+      "id": "refresh-cognito-no-single-flight",
+      "vendor": "cognito",
+      "claim": "absence",
+      "statement": "No single-flight dedup around refresh: N concurrent 401s would each trigger their own `onRefresh` call; the port and client hold no in-flight promise cache.",
+      "checked_patterns": [
+        "refreshPromise / refreshInFlight cached promise in the port or client",
+        "single-flight / mutex / awaiting a shared Promise in onRefresh",
+        "if (this._refreshing) return this._refreshing pattern",
+        "p-limit / semaphore / mutex library usage around refresh",
+        "Hub.listen('auth', ...) coordinating refresh across tabs"
+      ],
+      "searched": [
+        "src/api/client.ts",
+        "src/auth/adapters/cognito.ts",
+        "src/auth/port.ts"
+      ]
+    },
+    {
+      "id": "refresh-auth0-inherited",
+      "vendor": "auth0",
+      "claim": "presence",
+      "statement": "The legacy facade returns `getTokenSilently()` bare — no interceptor, no dedup, no explicit failure route; refresh is inherited from Auth0's silent-refresh mechanism.",
+      "evidence": [
+        {
+          "file": "src/legacy/auth0-helpers.ts",
+          "line": 31,
+          "quote": "  return c.getTokenSilently();"
+        }
+      ]
+    },
+    {
+      "id": "provider-cognito-localized-claims",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "Cognito-specific claim shapes (`cognito:groups`, `custom:tenantId`) are read only inside the adapter and mapped onto the domain `Principal`.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 40,
+          "quote": "      tenantId: idPayload[\"custom:tenantId\"] as string | undefined,"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 41,
+          "quote": "      roles: (idPayload[\"cognito:groups\"] as string[] | undefined) ?? [],"
+        }
+      ]
+    },
+    {
+      "id": "provider-auth0-namespaced-claim-in-component",
+      "vendor": "auth0",
+      "claim": "presence",
+      "statement": "Auth0's namespaced custom-claim URL key is read inline in an application component — vendor-specific claim shape has crossed the boundary into the UI layer.",
+      "evidence": [
+        {
+          "file": "src/components/LegacyAdmin.tsx",
+          "line": 17,
+          "quote": "  const roles = (user?.[\"https://legacy.example.com/roles\"] as string[]) ?? [];"
+        }
+      ]
+    },
+    {
+      "id": "authz-cognito-access-token-used",
+      "vendor": "cognito",
+      "claim": "presence",
+      "statement": "The Cognito adapter reads the access token (not the ID token) and attaches it to outbound requests as a Bearer credential.",
+      "evidence": [
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 28,
+          "quote": "    const accessToken = session.tokens?.accessToken?.toString();"
+        },
+        {
+          "file": "src/auth/adapters/cognito.ts",
+          "line": 29,
+          "quote": "    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};"
+        }
+      ]
+    },
+    {
+      "id": "authz-cognito-no-policy-layer",
+      "vendor": "cognito",
+      "claim": "absence",
+      "statement": "No policy layer (`can(principal, action, resource)`, `hasRole`, etc.) wraps authorization decisions; `Principal.roles` is mapped by the adapter but nothing enforces role checks through a shared function. The new components don't check roles yet — so no inline reads exist today, but the pattern isn't set.",
+      "checked_patterns": [
+        "policy / policies module or directory",
+        "can(...) / cannot(...) helpers",
+        "hasRole / isAuthorized / requireRole helpers",
+        "checkPermission / authorize wrappers",
+        "casl / oso / cerbos client libraries",
+        "role/permission strings inside src/auth/"
+      ],
+      "searched": [
+        "src/auth/",
+        "src/components/",
+        "src/api/",
+        "src/legacy/"
+      ]
+    },
+    {
+      "id": "authz-auth0-inline-role-check",
+      "vendor": "auth0",
+      "claim": "presence",
+      "statement": "Hard-coded role strings are checked inline in an application component — no policy layer between vendor claims and the authorization decision.",
+      "evidence": [
+        {
+          "file": "src/components/LegacyAdmin.tsx",
+          "line": 19,
+          "quote": "  const isAdmin = roles.includes(\"admin\") || roles.includes(\"super-admin\");"
+        }
+      ]
+    },
+    {
+      "id": "authz-auth0-opaque-api-token",
+      "vendor": "auth0",
+      "claim": "presence",
+      "statement": "`getTokenSilently()` is called with no `audience` anywhere — per the Auth0 profile, this yields an opaque (non-JWT) token that is not a valid API access token; the documented anti-pattern signalling the app is leaning on the ID token or a non-validating API for authorization.",
+      "evidence": [
+        {
+          "file": "src/legacy/auth0-helpers.ts",
+          "line": 31,
+          "quote": "  return c.getTokenSilently();"
+        }
+      ]
+    }
+  ],
+  "boundary": {
+    "cognito": {
+      "b1_anti_corruption": {
+        "status": "present",
+        "finding_ids": [
+          "boundary-cognito-domain-principal",
+          "boundary-cognito-newprofile-uses-domain"
+        ],
+        "note": "Domain types define the app surface; Cognito vendor types (`AuthSession`, `AuthTokens`, `AuthUser`) confined to the adapter file."
+      },
+      "b2_injected": {
+        "status": "present",
+        "finding_ids": [
+          "boundary-cognito-authport-interface",
+          "boundary-cognito-api-injection",
+          "boundary-cognito-newprofile-uses-domain"
+        ],
+        "note": "`AuthPort` interface with `createApiClient(auth: AuthPort)` injection; the new component instantiates the adapter locally rather than importing Amplify directly."
+      },
+      "b3_contract_tested": {
+        "status": "absent",
+        "finding_ids": [
+          "boundary-no-contract-suite"
+        ],
+        "note": "No tests exist at all; the port shape is not exercised independently of the vendor. A structurally present boundary with no contract suite."
+      },
+      "b4_client_server_split": {
+        "status": "not_applicable",
+        "finding_ids": [
+          "boundary-no-ssr-surface"
+        ],
+        "note": "No SSR/server surface exists in this codebase; the concern does not arise."
+      }
+    },
+    "auth0": {
+      "b1_anti_corruption": {
+        "status": "absent",
+        "finding_ids": [
+          "boundary-auth0-vendor-types-leak-helpers",
+          "boundary-auth0-vendor-types-leak-component"
+        ],
+        "note": "Auth0's `User` and `Auth0Client` types cross into the legacy facade as return types and into a component's useState. No domain projection."
+      },
+      "b2_injected": {
+        "status": "absent",
+        "finding_ids": [
+          "boundary-auth0-vendor-types-leak-helpers",
+          "boundary-auth0-vendor-types-leak-component"
+        ],
+        "note": "App and legacy modules import `@auth0/auth0-spa-js` directly and call the SDK inline; no injected port."
+      },
+      "b3_contract_tested": {
+        "status": "absent",
+        "finding_ids": [
+          "boundary-no-contract-suite"
+        ],
+        "note": "No tests exist at all; the Auth0 surface is not tested against any contract."
+      },
+      "b4_client_server_split": {
+        "status": "not_applicable",
+        "finding_ids": [
+          "boundary-no-ssr-surface"
+        ],
+        "note": "No `@auth0/nextjs-auth0` SSR surface; concern does not arise."
+      }
+    }
+  },
+  "axes": {
+    "storage": {
+      "per_vendor": {
+        "cognito": {
+          "classification": "builtin_selector",
+          "finding_ids": [
+            "storage-cognito-builtin-selector"
+          ],
+          "note": "Amplify v6: `setKeyValueStorage(sessionStorage)` where `sessionStorage` is the built-in from `aws-amplify/utils` — the profile's look-alike trap. Selects session over local storage; NOT a custom adapter. Tokens remain vendor-managed and JS-readable."
+        },
+        "auth0": {
+          "classification": "vendor_default",
+          "finding_ids": [
+            "storage-auth0-vendor-default"
+          ],
+          "note": "No `cache` or `cacheLocation` passed; SDK falls back to its in-memory default."
+        }
+      },
+      "recommended_seam": "A domain storage interface fronted by the boundary. For Cognito: a user-defined class implementing `KeyValueStorageInterface` (from `aws-amplify/utils`) passed to `setKeyValueStorage`. For Auth0: a class implementing `ICache` passed via `cache:` on `createAuth0Client`. Application code depends on the domain interface only; storage is a swap of one wire in each adapter.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "low",
+        "basis": "Cognito storage is one wire in a single adapter file (src/auth/adapters/cognito.ts:22) — swapping the selector for a user-defined class is a local edit inside the boundary. Auth0 storage is not configured at all, so becoming owned is one option on `createAuth0Client` in one facade file. The Cognito boundary keeps consumers from touching storage directly; the Auth0 side has no such shielding, so any Auth0 storage change also has to route through a new boundary before it becomes local.",
+        "finding_ids": [
+          "storage-cognito-builtin-selector",
+          "storage-auth0-vendor-default"
+        ]
+      }
+    },
+    "refresh": {
+      "per_vendor": {
+        "cognito": {
+          "classification": "partial",
+          "finding_ids": [
+            "refresh-cognito-owned-401-path",
+            "refresh-cognito-no-single-flight"
+          ],
+          "note": "Owned shape: 401-interceptor in `createApiClient` + `onSessionExpired` failure path, driven by `fetchAuthSession({ forceRefresh: true })`. Missing: single-flight dedup — N concurrent 401s would fire N refreshes."
+        },
+        "auth0": {
+          "classification": "inherited",
+          "finding_ids": [
+            "refresh-auth0-inherited"
+          ],
+          "note": "Bare `getTokenSilently()` in the legacy facade; no interceptor, no dedup, no explicit failure route — refresh is inherited from Auth0's silent-refresh mechanism."
+        }
+      },
+      "recommended_seam": "For Cognito: keep the existing 401-retry pattern and add a single-flight refresh promise on the adapter (concurrent 401s await the same in-flight refresh). For Auth0: route the legacy facade's token acquisition through an `AuthPort` on the same client so the 401/single-flight/failure path is shared across vendors, or explicitly retire the legacy path as the migration completes.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "moderate",
+        "basis": "Cognito is close to owned — the interceptor and failure path exist in src/api/client.ts and the port; single-flight is one field + a promise-caching guard on the adapter. Auth0's inherited path is called from one facade file (src/legacy/auth0-helpers.ts:31), but the retrofit isn't `getTokenSilently` itself — every caller of `getLegacyToken` needs to move onto the port to escape the inherited behavior; the cost scales with how many callers exist outside the audited surface.",
+        "finding_ids": [
+          "refresh-cognito-owned-401-path",
+          "refresh-cognito-no-single-flight",
+          "refresh-auth0-inherited"
+        ]
+      }
+    },
+    "identity_provider": {
+      "per_vendor": {
+        "cognito": {
+          "classification": "localized",
+          "finding_ids": [
+            "provider-cognito-localized-claims"
+          ],
+          "note": "Cognito-specific claim shapes (`cognito:groups`, `custom:tenantId`) read only inside the adapter and mapped to `Principal`."
+        },
+        "auth0": {
+          "classification": "scattered",
+          "finding_ids": [
+            "provider-auth0-namespaced-claim-in-component",
+            "boundary-auth0-vendor-types-leak-component",
+            "boundary-auth0-vendor-types-leak-helpers"
+          ],
+          "note": "Namespaced-claim URL key read inline in a component; Auth0's `User` type is the component's state type and the facade's return type — provider-specific coupling has spread beyond any adapter."
+        }
+      },
+      "recommended_seam": "All vendor-specific claim reads confined to per-vendor adapters (Cognito's `cognito:*`/`custom:*` keys and Auth0's namespaced URL keys), each projecting onto the domain `Principal`. App code speaks `Principal` only; no component ever names a Cognito or Auth0 claim key.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "moderate",
+        "basis": "Cognito's provider-specific surface is fully localized to one file. Auth0's confirmed leak count is small in this fixture (one inline namespaced-claim read at src/components/LegacyAdmin.tsx:17, one `User`-typed component, one facade returning `User`/`Auth0Client`) — but the retrofit is per component-touch, not per adapter. Cost scales with how many Auth0-consuming files exist elsewhere; the pattern is the calcification, not the count.",
+        "finding_ids": [
+          "provider-cognito-localized-claims",
+          "provider-auth0-namespaced-claim-in-component",
+          "boundary-auth0-vendor-types-leak-helpers",
+          "boundary-auth0-vendor-types-leak-component"
+        ]
+      }
+    },
+    "authorization": {
+      "per_vendor": {
+        "cognito": {
+          "claims_handling": "principal_without_policy",
+          "api_token_type": "access_token",
+          "finding_ids": [
+            "authz-cognito-access-token-used",
+            "authz-cognito-no-policy-layer",
+            "provider-cognito-localized-claims"
+          ],
+          "note": "The adapter reads the access token and maps roles into `Principal.roles`, but no policy layer wraps authorization decisions. The new components don't currently check roles, so nothing has inlined yet — but nothing prevents them from doing so; the boundary is present without an authorization API."
+        },
+        "auth0": {
+          "claims_handling": "inline_reads",
+          "api_token_type": "opaque",
+          "finding_ids": [
+            "authz-auth0-inline-role-check",
+            "authz-auth0-opaque-api-token",
+            "provider-auth0-namespaced-claim-in-component"
+          ],
+          "note": "Hard-coded role strings checked inline in a component; the outbound token is opaque (`getTokenSilently()` with no `audience`) — the profile's documented anti-pattern indicating likely reliance on the ID token or a non-validating API."
+        }
+      },
+      "recommended_seam": "A single policy layer, e.g. `can(principal, action, resource)`, called from app code and backed by `Principal` alone. Both adapters project vendor claims onto `Principal`; no component reads vendor-specific claim shapes. For Auth0 specifically: pass `authorizationParams: { audience: <api-identifier> }` to `getAccessTokenSilently` (v2 shape) so the SDK returns a real JWT access token; then send that token, not the ID token.",
+      "likelihood": null,
+      "cost_evidence": {
+        "level": "high",
+        "basis": "Two independent problems compound. (1) The opaque-token anti-pattern (src/legacy/auth0-helpers.ts:31) is systemic — every API call authorized by `getLegacyToken` is authenticating with a non-JWT token; adding `audience` requires an API identifier decision, backend acceptance of the new audience, and re-consenting scopes. (2) There is no shared policy layer on either side; unification means projecting two vendors' claims onto `Principal` AND introducing an authorization function AND migrating each inline role check (src/components/LegacyAdmin.tsx:19) through it.",
+        "finding_ids": [
+          "authz-cognito-access-token-used",
+          "authz-cognito-no-policy-layer",
+          "authz-auth0-inline-role-check",
+          "authz-auth0-opaque-api-token",
+          "provider-auth0-namespaced-claim-in-component"
+        ]
+      }
+    }
+  },
+  "interview": null,
+  "judgment_calls": [
+    {
+      "axis": "storage",
+      "question": "Is a token storage change (HttpOnly cookies, encrypted store, shared token store) actually on the roadmap for either vendor's surface?",
+      "context": "Cognito is one wire from a custom adapter (built-in selector today, look-alike trap); Auth0 has no storage configured. Whether either matters depends on your storage goals.",
+      "finding_ids": [
+        "storage-cognito-builtin-selector",
+        "storage-auth0-vendor-default"
+      ]
+    },
+    {
+      "axis": "refresh",
+      "question": "Is owning refresh (401-interceptor + single-flight + explicit failure path) on the roadmap, independent of any storage change?",
+      "context": "Cognito refresh is already partially owned — single-flight is the visible gap. Auth0 refresh is inherited via `getTokenSilently` and travels through the legacy facade.",
+      "finding_ids": [
+        "refresh-cognito-owned-401-path",
+        "refresh-cognito-no-single-flight",
+        "refresh-auth0-inherited"
+      ]
+    },
+    {
+      "axis": "identity_provider",
+      "question": "Is finishing the Auth0 → Cognito migration realistic in the next 12–24 months, or is Auth0 staying indefinitely?",
+      "context": "The 'right' scope of remediation on the Auth0 side depends on whether the legacy code is dying. If Auth0 is staying, its calcification needs the same boundary treatment as Cognito; if it's exiting soon, the migration completion IS the remediation.",
+      "finding_ids": [
+        "provider-cognito-localized-claims",
+        "provider-auth0-namespaced-claim-in-component",
+        "boundary-auth0-vendor-types-leak-helpers",
+        "boundary-auth0-vendor-types-leak-component"
+      ]
+    },
+    {
+      "axis": "authorization",
+      "question": "Are authorization model changes (RBAC/ABAC, finer permissions) planned — and, separately, is the ID→access-token fix for Auth0 already being tracked?",
+      "context": "The Auth0 opaque-token issue is independent of any broader authz change and moves at its own cadence (backend acceptance, audience assignment, scope consent). A policy layer would unify Cognito and Auth0 authorization but only pays off if either the model is changing or the migration is completing.",
+      "finding_ids": [
+        "authz-cognito-no-policy-layer",
+        "authz-auth0-inline-role-check",
+        "authz-auth0-opaque-api-token"
+      ]
+    },
+    {
+      "axis": null,
+      "question": "Firebase is in `package.json` and imported here for analytics — is Firebase Auth used anywhere the audit didn't cover (a mobile client, an admin surface, another repo)? If so, a `vendors/firebase.md` profile should be authored so a future run can assess it.",
+      "context": "The skill deliberately did not assess Firebase because no profile exists. This is coverage.gaps material — flagged so it isn't silently a clean bill of health."
+    },
+    {
+      "axis": null,
+      "question": "What is the true retrofit cost per axis in your team's context — bandwidth, test coverage, coordination with backend on the Auth0 audience/scope decision?",
+      "context": "The audit reports mechanical cost (low/moderate/high) grounded in boundary quality and confirmed call-site counts. Time-to-complete depends on team, tests, and coordination — that number is yours."
+    }
+  ],
+  "backlog": null,
+  "migration_readiness": null,
+  "synthesis": {
+    "posture": "mid-migration — Cognito side bounded but incomplete; Auth0 side calcified",
+    "headline": {
+      "text": "The Cognito surface has a real boundary — `AuthPort`, an adapter with vendor types confined, access token attached, and a 401-retry path — but three gaps stop it short of fully bounded: storage uses the built-in `sessionStorage` selector (the look-alike trap, not a custom adapter), refresh has no single-flight dedup, and nothing tests the port contract. Meanwhile the Auth0 legacy path is calcified in every direction: `User`/`Auth0Client` types cross into a component's state, a namespaced-claim URL key is read inline, and API calls authorize with `getTokenSilently()` — no `audience` — which per the Auth0 profile yields an opaque token, the documented anti-pattern. Any single verdict would be wrong; the two surfaces are at different stages, and the highest-leverage moves live on the Auth0 side.",
+      "finding_ids": [
+        "storage-cognito-builtin-selector",
+        "refresh-cognito-no-single-flight",
+        "boundary-no-contract-suite",
+        "boundary-auth0-vendor-types-leak-component",
+        "provider-auth0-namespaced-claim-in-component",
+        "authz-auth0-opaque-api-token"
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Calcification Audit Summary — Template
 
-This is the **lead artifact** — the first thing the maintainer reads, the thing that gets pasted into Slack and skimmed by a skeptical senior in 60 seconds. It either earns trust or loses it. **Distill it from the full report you already wrote** (artifact 1); it must contain nothing the report doesn't, and every status, count, and `file:line` anchor must match the report exactly.
+This is the **lead artifact** — the first thing the maintainer reads, the thing that gets pasted into Slack and skimmed by a skeptical senior in 60 seconds. It either earns trust or loses it. **Render it from `auth-calcification-audit.json`** — the same source the report was rendered from; NOT from the report, NOT from memory of the analysis. Every status comes from the JSON's boundary/axes nodes, every anchor from a finding's evidence, the headline from `synthesis.headline` — which is exactly what keeps it in perfect agreement with the report.
 
 ## The bar this must clear
 
@@ -25,9 +25,9 @@ This is the **lead artifact** — the first thing the maintainer reads, the thin
 
 `<Vendor + version>` `<(notable context, e.g. "federates to Okta via OIDC")>`. Run on `<model, self-reported>`, `<interactive / non-interactive>`.
 
-**Posture: `<one phrase — e.g. well-bounded but incomplete / heavily calcified / mid-migration>`.** `<1–2 sentences: the overall structural verdict in plain language.>` *(`<confidence clause — e.g. "High confidence: boundary modules read in full; the N apps sampled via grep+confirm.">`)*
+**Posture: `<synthesis.posture — e.g. well-bounded but incomplete / heavily calcified / mid-migration>`.** `<1–2 sentences: the overall structural verdict in plain language.>` *(`<confidence clause — e.g. "High confidence: boundary modules read in full; the N apps sampled via grep+confirm.">`)*
 
-**Headline:** `<The single most consequential finding. Prefer a synthesis: a mechanical fact × the maintainer's stated roadmap = a named tension/dependency/risk. Include the evidence anchor(s). 1–3 sentences.>`
+**Headline:** `<synthesis.headline.text — the single most consequential finding; prefer a synthesis: a mechanical fact × the maintainer's stated roadmap = a named tension/dependency/risk. Anchor(s) come from the findings synthesis.headline.finding_ids cites. 1–3 sentences.>`
 
 | Signal | Status | Anchor |
 |---|---|---|
@@ -39,8 +39,8 @@ This is the **lead artifact** — the first thing the maintainer reads, the thin
 
 *(Every Anchor cell is a markdown link, e.g. `[src/api/client.ts:15](src/api/client.ts#L15)` — not bare text.)*
 
-**Top moves** `<(ranked by your inputs — likelihood × cost)>` *— in non-interactive mode, retitle this "Top open questions" and drop the ranking.*
-1. **`<move>`** — `<one line: what + why now>`. *`<likelihood × cost, qualitative>`.*
+**Top moves** `<(ranked by your likelihood × the audit's cost evidence — the top of the JSON backlog array, same order)>` *— in non-interactive mode (`backlog` null), retitle this "Top open questions" and drop the ranking.*
+1. **`<move>`** — `<one line: what + why now>`. *`<likelihood (yours) × cost evidence, qualitative>`.*
 2. **`<move>`** — `<…>`. *`<…>`.*
 3. **`<move>`** — `<…>`. *`<…>`.*
 

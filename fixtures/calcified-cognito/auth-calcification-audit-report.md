@@ -1,104 +1,99 @@
-# Authentication Calcification Audit — `fixtures/calcified-cognito`
+# Authentication Calcification Audit — `calcified-cognito`
 
-**Date:** 2026-06-20
-**Vendor profile(s) used:** `amplify-cognito.md` (verified against `aws-amplify` v6 as of 2026-06-17)
-**Model used (self-reported):** Claude Opus 4.7
+**Date:** 2026-07-08
+**Vendor profile(s) used:** `amplify-cognito.md` (last verified 2026-06-17)
+**Model used (self-reported):** Claude Opus 4.8
 **Mode:** non-interactive
+**Skill version:** 1.3.0
+**Machine-readable record:** [auth-calcification-audit.json](auth-calcification-audit.json)
 
 ## Summary
 
-AWS Amplify v6 / Cognito. **No real boundary exists** — the [src/lib/auth-helpers.ts](src/lib/auth-helpers.ts) module looks like a wrapper but returns Amplify's `AuthSession` and `AuthUser` types unchanged, so the vendor's shape leaks across all callers. Vendor imports are scattered across five application-layer files; storage is the default localStorage; refresh is inherited vendor magic with no 401 path; and the **ID token** authorizes every API call. All four axes are calcified.
+This app uses **AWS Amplify v6 (Amazon Cognito)** and is **heavily calcified**: there is no real auth boundary, and the vendor's shape leaks across all four change axes. The one file that looks like a seam — [src/lib/auth-helpers.ts](src/lib/auth-helpers.ts) — is a *leaky facade*: it re-exports Amplify's functions and hands back the vendor's `AuthSession` unchanged, so callers are coupled to the vendor's types anyway. The two things that matter most: that facade earns no credit as a boundary, and the **ID token** (not the access token) is what authorizes outbound API calls — so both a provider swap and an authorization-model change are cross-cutting rewrites today.
 
 ## What auth calcification means (for this codebase)
 
-Auth calcification is the degree to which a change that should be local — swap token storage, change refresh, replace the identity provider, move from inline claim reads to a real authorization model — has instead become a cross-cutting rewrite because the vendor's types and behaviors leaked everywhere. **This codebase is calcified across all four axes:** the vendor's session shape is the return type in two app-layer files, claim names are read inline in three components/pages, and there's no boundary module localizing change. Any of the four future changes below would touch scattered call sites today, not one adapter.
+Auth calcification is the degree to which a change that *should* be local — swap token storage, change refresh, replace the identity provider, move from inline claim reads to a real authorization model — has instead become a cross-cutting rewrite because the vendor's types and behaviors leaked everywhere. This codebase sits at the heavily-calcified end: Amplify's `AuthSession` / `AuthUser` / `FetchUserAttributesOutput` are the return and state types in component and page code, `cognito:*` claims are read inline in two components, `fetchUserAttributes` is called straight from a page, and there is no boundary module localizing any of it. Any of the four future changes below would touch every one of those call sites rather than a single adapter.
 
 ## Coverage
 
-- **Comprehensively read** (every relevant region opened): [src/lib/amplify-config.ts](src/lib/amplify-config.ts), [src/lib/auth-helpers.ts](src/lib/auth-helpers.ts), [src/api/client.ts](src/api/client.ts), [src/components/UserBadge.tsx](src/components/UserBadge.tsx), [src/components/AdminPanel.tsx](src/components/AdminPanel.tsx), [src/pages/Profile.tsx](src/pages/Profile.tsx), [__tests__/auth.test.ts](__tests__/auth.test.ts), plus [package.json](package.json) for vendor identification.
-- **Sampled via grep + confirm:** none — the fixture is small enough that every relevant file was read in full.
-- **Not analyzed or low-confidence:** none. All files parsed; no dynamic imports; no unparseable regions; no detected-but-unprofiled vendors.
+What was analyzed and how — so "no finding" never reads as "clean." This is a small app; **every source file was read in full** (comprehensive), so confidence is high and nothing was sampled or skipped.
+
+- **Comprehensively read** (every relevant region opened):
+  - [package.json](package.json) — vendor detection (identified `aws-amplify` v6).
+  - [src/lib/amplify-config.ts](src/lib/amplify-config.ts) — configuration file and the token-storage seam the profile names as load-bearing.
+  - [src/lib/auth-helpers.ts](src/lib/auth-helpers.ts) — the only candidate boundary/wrapper module.
+  - [src/api/client.ts](src/api/client.ts) — outbound API auth layer (refresh, token type, injection).
+  - [src/components/UserBadge.tsx](src/components/UserBadge.tsx), [src/components/AdminPanel.tsx](src/components/AdminPanel.tsx) — app-layer components.
+  - [src/pages/Profile.tsx](src/pages/Profile.tsx) — page-level provider-specific usage.
+  - [__tests__/auth.test.ts](__tests__/auth.test.ts) — the only auth test.
+- **Sampled via grep + confirm:** none — the app is small enough to read exhaustively.
+- **Not analyzed or low-confidence:** none. No unparseable files, dynamic imports, generated code, or vendors without a profile were encountered.
 
 ## Boundary assessment
 
-The boundary is **ABSENT on all four signals**. A weak boundary is the root cause: every axis below is expensive precisely because there is no seam localizing the vendor.
+The structural finding that frames everything else. A weak boundary is exactly why the axes below are expensive.
 
-- **Anti-corruption layer — ABSENT.** Vendor types leak into application-layer signatures and state in five locations:
-  - [src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8) — `getSession(): Promise<AuthSession>` returns the vendor type
-  - [src/lib/auth-helpers.ts:14](src/lib/auth-helpers.ts#L14) — `getUser(): Promise<AuthUser>` returns the vendor type
-  - [src/components/UserBadge.tsx:11](src/components/UserBadge.tsx#L11) — `useState<AuthSession | null>` typed with vendor type
-  - [src/components/UserBadge.tsx:33](src/components/UserBadge.tsx#L33) — `getCurrentSession(): Promise<AuthSession>` exported with vendor return type
-  - [src/pages/Profile.tsx:12](src/pages/Profile.tsx#L12) — `useState<FetchUserAttributesOutput | null>` typed with vendor type
+- **Anti-corruption layer — ABSENT.** Vendor `AuthSession` / `AuthUser` / `FetchUserAttributesOutput` cross into component state, page state, and exported return types. The "wrapper" at [src/lib/auth-helpers.ts:8](src/lib/auth-helpers.ts#L8) returns `Promise<AuthSession>` and [src/lib/auth-helpers.ts:14](src/lib/auth-helpers.ts#L14) returns `Promise<AuthUser>` — a leaky facade, the worst trap because it looks bounded. The leak recurs in app code: [src/components/UserBadge.tsx:11](src/components/UserBadge.tsx#L11) types state as `AuthSession`, [src/components/UserBadge.tsx:33](src/components/UserBadge.tsx#L33) exports `Promise<AuthSession>`, and [src/pages/Profile.tsx:12](src/pages/Profile.tsx#L12) types state as `FetchUserAttributesOutput`.
+- **Injected vs imported — ABSENT.** Auth is imported directly from `aws-amplify/auth` and used inline at each call site; there is no injected `AuthPort`. See [src/api/client.ts:7](src/api/client.ts#L7) / [src/api/client.ts:14](src/api/client.ts#L14) and [src/components/AdminPanel.tsx:7](src/components/AdminPanel.tsx#L7).
+- **Contract-tested — ABSENT.** No conformance suite tests the boundary independently of the vendor. The only auth test *mocks* `aws-amplify/auth` and asserts on the vendor's shape — [__tests__/auth.test.ts:9](__tests__/auth.test.ts#L9) and [__tests__/auth.test.ts:28](__tests__/auth.test.ts#L28) — which passes today and dies on migration.
+- **Client/server split absorbed — NOT APPLICABLE.** This is a client-only React SPA; there is no SSR/server auth surface (no `aws-amplify/auth/server`, no `@aws-amplify/adapter-nextjs`/`createServerRunner`, no `Amplify.configure(..., { ssr: true })`, no execution-context branching), so the split does not arise.
 
-  The [src/lib/auth-helpers.ts](src/lib/auth-helpers.ts) module is a **leaky facade** — it looks like a boundary by name but hands vendor types straight to every caller. This should NOT be credited as a real boundary.
-
-- **Injected vs imported — ABSENT.** Auth is reached via direct vendor imports in five files; no `AuthPort`-style interface exists:
-  - [src/api/client.ts:7](src/api/client.ts#L7), [src/components/UserBadge.tsx:8](src/components/UserBadge.tsx#L8), [src/components/AdminPanel.tsx:7](src/components/AdminPanel.tsx#L7), [src/pages/Profile.tsx:6](src/pages/Profile.tsx#L6), [src/lib/auth-helpers.ts:6](src/lib/auth-helpers.ts#L6).
-
-- **Contract-tested — ABSENT.** [__tests__/auth.test.ts:9](__tests__/auth.test.ts#L9) mocks `aws-amplify/auth` and the assertions at [__tests__/auth.test.ts:27](__tests__/auth.test.ts#L27) read against Amplify's `AuthSession` shape (`cognito:groups` payload). No `AuthPort` contract suite exists. These tests pass today and would die on migration.
-
-- **Client/server split absorbed — N/A.** No SSR code in this fixture.
+Because there is no boundary and no contract suite, every axis change below has no single place to be made — that is the source of the cost.
 
 ## Findings by axis
 
-### Token storage
+For each axis: the observation, the evidence, and the recommended seam. **Cost evidence** is the skill's own mechanical read (qualitative, no durations). **Likelihood** is the maintainer's and was **not** supplied — this was a non-interactive run — so every axis is routed to *Judgment calls for you*.
 
-- **Observation:** Inherited default — browser `localStorage`. No custom storage adapter. v6 patterns checked (`setKeyValueStorage`, `cognitoUserPoolsTokenProvider`, `KeyValueStorageInterface`); v5 patterns checked too (`cookieStorage:` and `storage:` keys inside `Amplify.configure({ Auth: ... })`). Neither found.
-- **Evidence:** [src/lib/amplify-config.ts:5](src/lib/amplify-config.ts#L5) — `Amplify.configure({ Auth: { Cognito: { userPoolId, userPoolClientId } } })` with no storage configuration of any kind.
-- **Recommended seam:** A class implementing `KeyValueStorageInterface` (from `aws-amplify/utils`), passed to `cognitoUserPoolsTokenProvider.setKeyValueStorage(...)` inside the boundary/adapter module. Storage swaps then become one adapter change instead of a config edit scattered per environment.
-- **Likelihood × cost:** See "Judgment calls for you" — non-interactive run.
+### Token storage
+- **Observation:** Vendor default — Amplify **v6**, no `setKeyValueStorage` and no custom `tokenProvider`, so tokens live in the default browser `localStorage`. (Searched for the v6 custom-adapter and built-in-selector patterns and the v5 `cookieStorage:`/`storage:` config patterns; none present.)
+- **Evidence:** [src/lib/amplify-config.ts:5](src/lib/amplify-config.ts#L5) — `Amplify.configure` passes only the Cognito user-pool block; no storage configuration anywhere.
+- **Recommended seam:** Plug a custom class implementing `KeyValueStorageInterface` into `cognitoUserPoolsTokenProvider.setKeyValueStorage`, behind an auth boundary, so where tokens live becomes one adapter's decision. (Note: this overrides the TokenStore only; `identityId` stays in `localStorage` if Identity Pools are used.)
+- **Cost evidence:** **moderate** — storage is unconfigured and there is no boundary or storage seam to plug an adapter into, so the retrofit is *introducing* the seam plus config; contained, but the JS-readable-token dependency ties it to the refresh path.
+- **Likelihood:** see *Judgment calls for you*.
 
 ### Refresh and owned runtime behaviors
-
-- **Observation:** Inherited vendor magic. Bare `fetchAuthSession()` calls with no 401-interceptor, no single-flight deduplication, no explicit failure path. The silent auto-refresh that Amplify provides is the *only* refresh mechanism — and it depends on tokens being JS-readable (would break on a move to HttpOnly cookies).
-- **Evidence:** [src/api/client.ts:14](src/api/client.ts#L14) — axios request interceptor calls `await fetchAuthSession()` and attaches the result to the header; the surrounding interceptor has no 401 retry path, no `onSessionExpired`-style failure handling, and no wrapper around `fetchAuthSession` that would deduplicate concurrent refreshes.
-- **Recommended seam:** Owned 401-handling at the boundary — an `onRefresh()` method, a single-flight wrapper so N concurrent 401s trigger one refresh, and an explicit `onSessionExpired()` failure path. The methodology document gives the single-flight pattern.
-- **Likelihood × cost:** See "Judgment calls for you" — non-interactive run.
+- **Observation:** Inherited vendor magic — a bare `fetchAuthSession()` in the axios request interceptor, with no single-flight dedup and no explicit `onSessionExpired` failure path.
+- **Evidence:** [src/api/client.ts:14](src/api/client.ts#L14) — `const session = await fetchAuthSession();` inside the request interceptor.
+- **Recommended seam:** Own refresh at the API-client seam: a 401 interceptor with single-flight dedup (N concurrent 401s trigger one refresh) and an explicit `onSessionExpired` failure path, rather than relying on Amplify's silent auto-refresh. Amplify's silent refresh works only because tokens are JS-readable — it breaks the day storage moves to HttpOnly cookies.
+- **Cost evidence:** **moderate** — one bare call site to own, but with no boundary present, adding single-flight and a failure path means introducing the seam, not filling an existing `onRefresh` slot.
+- **Likelihood:** see *Judgment calls for you*.
 
 ### Identity provider
-
-- **Observation:** Cognito-specific features scattered across three application-layer files. Not localized to an adapter.
-- **Evidence:**
-  - [src/components/UserBadge.tsx:18](src/components/UserBadge.tsx#L18) — `payload["cognito:groups"]` read inline
-  - [src/components/UserBadge.tsx:19](src/components/UserBadge.tsx#L19) — `payload["cognito:username"]` read inline
-  - [src/components/AdminPanel.tsx:15](src/components/AdminPanel.tsx#L15) — `payload["cognito:groups"]` read inline (second occurrence in a different file — *scattered* coupling)
-  - [src/pages/Profile.tsx:7](src/pages/Profile.tsx#L7) — `fetchUserAttributes` (Cognito-only API) called from page-level code
-  - [src/pages/Profile.tsx:19](src/pages/Profile.tsx#L19) — Cognito custom attribute `custom:tenantId` read inline
-- **Recommended seam:** Localize all vendor-specific surface inside one adapter (claim mapping, custom-attribute access, `fetchUserAttributes`). App code should consume a domain `Principal`, never see Cognito-specific claim names.
-- **Likelihood × cost:** See "Judgment calls for you" — non-interactive run.
+- **Observation:** Scattered — Cognito-specific surface (`cognito:groups`, `cognito:username`, `custom:` attributes, `fetchUserAttributes`) is read across three app-layer files with nothing localizing it.
+- **Evidence:** [src/components/UserBadge.tsx:18](src/components/UserBadge.tsx#L18) and [src/components/AdminPanel.tsx:15](src/components/AdminPanel.tsx#L15) read `cognito:groups`; [src/pages/Profile.tsx:15](src/pages/Profile.tsx#L15) calls `fetchUserAttributes` and [src/pages/Profile.tsx:19](src/pages/Profile.tsx#L19) reads a `custom:tenantId` attribute.
+- **Recommended seam:** Localize Cognito-specific surface (groups, custom attributes, `fetchUserAttributes`) inside a single adapter; the rest of the app speaks a domain `Principal` and OIDC/OAuth2 vocabulary, not `cognito:*`.
+- **Cost evidence:** **high** — Cognito-specific surface is read inline across three files with nothing localizing it; a provider swap touches every one of these call sites.
+- **Likelihood:** see *Judgment calls for you*.
 
 ### Authorization (and token type)
-
-- **Observation:** Authorization decisions made by reading vendor claim shapes inline at three call sites with hard-coded role strings. No domain `Principal` or policy layer. The **ID token** authorizes every API request — the documented Cognito anti-pattern; access token should be used for API auth.
-- **Evidence (claims/roles):**
-  - Inline `cognito:groups` reads at [src/components/UserBadge.tsx:18](src/components/UserBadge.tsx#L18) and [src/components/AdminPanel.tsx:15](src/components/AdminPanel.tsx#L15)
-  - Hard-coded role strings: `"admin"` at [src/components/UserBadge.tsx:22](src/components/UserBadge.tsx#L22); `"admin"` and `"billing-admin"` at [src/components/AdminPanel.tsx:17](src/components/AdminPanel.tsx#L17)
-  - Inline custom-attribute read `custom:tenantId` at [src/pages/Profile.tsx:19](src/pages/Profile.tsx#L19)
-- **Evidence (token type):** [src/api/client.ts:15](src/api/client.ts#L15) — `session.tokens?.idToken?.toString()` attached to `Authorization: Bearer ...` header. Should be `accessToken`, not `idToken`.
-- **Recommended seam:** Domain `Principal` (carrying `roles`, `tenantId`, etc.) produced by the adapter from vendor claims; a single policy module exposing `can(principal, action)`; the access token attached to outbound API calls, not the ID token.
-- **Likelihood × cost:** See "Judgment calls for you" — non-interactive run.
+- **Observation:** Inline claim/role reads and ID-token-for-API. Authorization decisions read `idToken.payload['cognito:groups']` inline with hard-coded role strings in two components, and the **ID token** (not the access token) authorizes outbound API calls.
+- **Evidence:** inline reads at [src/components/UserBadge.tsx:22](src/components/UserBadge.tsx#L22) (`groups.includes("admin")`) and [src/components/AdminPanel.tsx:17](src/components/AdminPanel.tsx#L17) (`"admin" || "billing-admin"`); the ID token is attached at [src/api/client.ts:15](src/api/client.ts#L15) and [src/api/client.ts:17](src/api/client.ts#L17).
+- **Recommended seam:** Map claims to a domain `Principal` at the boundary and route authorization through a policy layer instead of inline `cognito:groups` reads; attach the **access token** (not the ID token) as the API `Authorization` header so identity and authorization decouple.
+- **Cost evidence:** **high** — inline claim reads with hard-coded role strings in two components, plus the ID token authorizing the API; a move to a policy layer plus access tokens has no single place to change.
+- **Likelihood:** see *Judgment calls for you*.
 
 ## Migration-readiness
 
-Not applicable — non-interactive run with no maintainer-flagged changes. This section appears only when the maintainer indicated a specific change on the table during the Phase 2 interview.
+Not applicable — the migration-readiness view reports progress toward a change the *maintainer* flagged, and this was a non-interactive run with no change flagged. Re-run interactively to get this framing.
 
 ## Prioritized backlog
 
-Not applicable — non-interactive run with no likelihood inputs from the maintainer. No priority ranking can be produced honestly without those inputs. Re-run interactively (or supply answers) to get a ranked backlog.
+Not produced. Prioritization ranks the audit's cost evidence against the maintainer's **likelihood of change**, and this was a non-interactive run — no likelihood input exists to rank by. The findings and recommended seams above stand on their own; ranking them requires the maintainer's answers to the questions below. (See non-negotiable #1: the skill will not invent the human axes.)
 
 ## Judgment calls for you
 
-Answer these (or re-run interactively) to get a ranked backlog:
+The questions the audit deliberately did not answer, because only the maintainer can. In a non-interactive run, all four axis questions route here.
 
-- **Token storage** — Is a move off localStorage (HttpOnly cookies, encrypted store, server-managed session) actually on the roadmap? Mechanical evidence shows no custom adapter; the question of whether one is *worth* writing depends on your roadmap and security posture.
-- **Refresh ownership** — Independent decision, or downstream of a storage move? (A move to HttpOnly cookies breaks Amplify's silent client-side refresh and forces owned refresh, so the two are coupled.)
-- **Identity provider** — Is a provider swap realistic in the next 12-24 months, or is the value of decoupling purely defensive? Determines whether boundary work is urgent or optional.
-- **Authorization model** — Is RBAC/ABAC or finer permissions planned? Is consolidating onto the access token (away from ID-for-API) planned? The three inline claim reads and five hard-coded role strings are cheap to fix *now*, expensive once the authz model spreads.
-- **True retrofit cost** — All cost language above is qualitative (counts of call sites, files affected). The real time-to-complete depends on team bandwidth, test coverage, and the per-app reality. Confirm before committing to sequencing.
+- **Token storage.** Is a token-storage change actually on the table — e.g. a move to HttpOnly cookies, an encrypted store, or session cookies? A change here is also what breaks Amplify's silent refresh. (Findings: storage default at [src/lib/amplify-config.ts:5](src/lib/amplify-config.ts#L5).)
+- **Refresh.** Is owning refresh (401-interceptor + single-flight + explicit `onSessionExpired`) on the roadmap? Refresh changes are usually downstream of a storage move. (Finding: [src/api/client.ts:14](src/api/client.ts#L14).)
+- **Identity provider.** Is a provider swap away from Cognito realistically on the table, and how much Cognito-specific behavior are you willing to keep? Both are roadmap and appetite calls. (Findings: [src/components/UserBadge.tsx:18](src/components/UserBadge.tsx#L18), [src/pages/Profile.tsx:15](src/pages/Profile.tsx#L15).)
+- **Authorization.** Are authorization-model changes planned (RBAC/ABAC or finer permissions), or a move from the ID token to the access token for API authorization? What backend contracts depend on the current ID-token choice is not visible in this code. (Findings: [src/components/UserBadge.tsx:22](src/components/UserBadge.tsx#L22), [src/api/client.ts:15](src/api/client.ts#L15).)
+- **True retrofit cost (all axes).** What is the real call-site count as the app grows, the current test coverage, and the team bandwidth? The audit supplies mechanical cost evidence; time-to-complete is your number.
 
 ## Scope and disclaimers
 
-- This is **calcification analysis, not a security audit.** It assesses changeability, not vulnerabilities. The storage finding (tokens in browser-readable localStorage, exposed to XSS exfiltration; leaked refresh token would grant long-lived access) is noted as a *changeability* concern under Axis 1; a real security review would assess the full threat model and is recommended separately.
-- **App ↔ auth boundary only.** Infrastructure, API gateways, Lambda authorizers, IaC out of scope.
-- **Findings are evidence-backed observations.** Every `file:line` reference is a clickable link.
-- **Cost figures are qualitative** (low/moderate/high anchored to mechanical evidence) and intended as inputs to *your* time/bandwidth estimate, not as a substitute for it.
+- This is **calcification analysis, not a security audit.** It assesses changeability, not vulnerabilities. It's worth noting in passing that tokens in the default browser `localStorage` are the storage posture referenced above — but that is a *changeability* observation here; get a real security review for anything vulnerability-related, which this deliberately does not cover.
+- App↔auth boundary only; infrastructure, gateways, and IaC were out of scope.
+- Findings are evidence-backed observations; no prioritization is presented because no maintainer inputs were supplied (non-interactive run).
+- **Cost figures are qualitative (low/moderate/high) and based on mechanical evidence.** Real time-to-complete depends on test coverage, team bandwidth, and the per-app call-site reality you know best — confirm before committing to sequencing.

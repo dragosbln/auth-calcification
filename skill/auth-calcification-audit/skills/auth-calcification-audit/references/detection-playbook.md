@@ -13,6 +13,8 @@ A raw text match is a *candidate*, not a finding. Grepping for a vendor type or 
 
 A "no matches" result from grep is a finding too — and the most dangerous one, because it produces silent false negatives. Before declaring **"no custom storage adapter,"** **"no contract suite,"** **"no policy layer,"** etc., check the profile for **alternative patterns** (e.g., a vendor with multiple SDK versions where the configuration API differs entirely). If a profile lists multiple ways the same concern can manifest, you must search for **all** of them before reporting absence. One grep miss + one declared absence = a confidently wrong finding.
 
+Record the **complete list of patterns checked** (and where you searched) with every absence finding. The search record is part of the finding itself — an absence claim is only as trustworthy as the record proving the search was exhaustive.
+
 When a profile is explicit about version-specific patterns (e.g., "Amplify v5 vs v6 storage configuration"), detect the version first and apply the matching patterns. A finding stated without version qualification is incomplete.
 
 ### Coverage qualification (comprehensive vs sampled)
@@ -24,7 +26,7 @@ When you record findings, distinguish two reading modes and report them in the C
 
 Both are legitimate, but they imply different confidence. A finding of "4 inline claim reads across 3 files" derived from sampled grep + confirm is honest **only if the Coverage section says** something like *"`src/components/**` sampled via grep + confirm; counts are confirmed grep hits, not an exhaustive component-by-component read."* Don't let sampled counts read like comprehensive counts in the findings.
 
-Record every confirmed finding with **file:line** and a one-line reason. Record what you **could not analyze** (unparseable files, dynamic imports, generated code) as coverage gaps — a clean section must mean "looked and found nothing," never "didn't look."
+Record every confirmed finding with **file:line**, the **verbatim quoted line(s)** — copied exactly from the file, never paraphrased; the quote is what makes the finding mechanically checkable — and a one-line reason. Record what you **could not analyze** (unparseable files, dynamic imports, generated code) as coverage gaps — a clean section must mean "looked and found nothing," never "didn't look."
 
 ## Step 0 — Detect vendors and establish the boundary module
 
@@ -114,4 +116,4 @@ For each axis, the pass produces findings + evidence; **likelihood and cost are 
 
 ## Output of the pass
 
-A structured list of findings (boundary + four axes), each with evidence and a one-line reason, plus a coverage record (what was analyzed, what was skipped and why). Hand this to the interview phase. **Do not** assign priorities or likelihood/cost here.
+A structured list of findings (boundary + four axes) — each either a presence claim with verbatim quoted evidence or an absence claim with its complete search record — plus per-axis qualitative cost evidence and a coverage record (what was analyzed, what was skipped and why). This record becomes the canonical JSON artifact in Phase 3 (see `assets/audit-schema.json`). Hand it to the interview phase. **Do not** assign priorities or likelihood here — likelihood is the maintainer's.

@@ -1,0 +1,20 @@
+{
+  "type": "structural_equality",
+  "description": "bounded-auth0's app layer is byte-identical to bounded-cognito; only the vendor adapter differs. Every enum-level verdict must match across the two audits — this is the 'methodology travels' claim as a permanent test.",
+  "fixtures": ["bounded-cognito", "bounded-auth0"],
+  "paths": [
+    "boundary.<v>.b1_anti_corruption.status",
+    "boundary.<v>.b2_injected.status",
+    "boundary.<v>.b3_contract_tested.status",
+    "boundary.<v>.b4_client_server_split.status",
+    "axes.storage.per_vendor.<v>.classification",
+    "axes.refresh.per_vendor.<v>.classification",
+    "axes.identity_provider.per_vendor.<v>.classification",
+    "axes.authorization.per_vendor.<v>.claims_handling",
+    "axes.authorization.per_vendor.<v>.api_token_type",
+    "axes.storage.cost_evidence.level",
+    "axes.refresh.cost_evidence.level",
+    "axes.identity_provider.cost_evidence.level",
+    "axes.authorization.cost_evidence.level"
+  ]
+}

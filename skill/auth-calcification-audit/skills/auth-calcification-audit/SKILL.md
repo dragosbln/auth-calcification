@@ -1,5 +1,6 @@
 ---
 name: auth-calcification-audit
+version: 1.4.0
 description: >-
   Audit a codebase for authentication calcification risk — how tightly its auth is
   wired to a vendor's defaults (token storage, refresh, identity provider,
@@ -9,16 +10,19 @@ description: >-
   Cognito, Amplify, Auth0, Firebase, or another IdP, or how hard it would be to
   swap providers, change token storage, or change how refresh works; or wants a
   migration-readiness assessment or a remediation backlog for their auth boundary.
-  Works across identity providers through pluggable vendor profiles. Produces an
-  evidence-backed report that escalates the judgment calls it cannot make instead
-  of faking them, and never auto-edits auth code.
+  Works across identity providers through pluggable vendor profiles. Produces a
+  canonical machine-readable audit JSON plus an evidence-backed report and summary
+  rendered from it, escalates the judgment calls it cannot make instead of faking
+  them, and never auto-edits auth code.
 parameters:
   - name: interactive
     type: boolean
     default: true
     description: >-
       Run the judgment interview (Phase 2). When true, ask the maintainer
-      likelihood-of-change and cost-to-retrofit questions to enable prioritization.
+      likelihood-of-change and cost-to-retrofit questions to enable prioritization
+      — unless the audited root contains an `_interview.yaml` answers file, in
+      which case answers are read from it instead of asking (see Phase 2).
       When false, skip the interview and route all judgment questions to the
       "Judgment calls for you" section with no priority ranking.
 ---
@@ -58,13 +62,21 @@ Bias toward including the disclaimer when uncertain. A spurious disclaimer is ha
 Follow `references/detection-playbook.md` step by step.
 - Detect which vendor(s) the codebase uses and load the matching profile(s); record any detected-but-unprofiled vendor as a coverage gap.
 - Assess the four **boundary signals**, then the **four change axes**, using the loaded profile's identifiers.
-- For every candidate match, **open the code and confirm** before recording it — a vendor type inside the adapter is correct; the same type in app-layer code is a leak. Record each confirmed finding with **file:line** and a one-line reason, and keep a running coverage record.
-- **Before declaring any negative finding** (no custom adapter, no policy layer, no contract suite, etc.), check the profile for **alternative patterns** that could satisfy the same concern (e.g., version-specific configuration APIs). One missed pattern = one confidently wrong "no finding."
-- Do **not** score likelihood or cost here.
+- For every candidate match, **open the code and confirm** before recording it — a vendor type inside the adapter is correct; the same type in app-layer code is a leak. Record each confirmed finding with **file:line**, the **verbatim quoted line(s)** copied exactly from the file (never paraphrased, never from memory — the quote is what makes the finding mechanically checkable), and a one-line reason. Keep a running coverage record.
+- **Before declaring any negative finding** (no custom adapter, no policy layer, no contract suite, etc.), check the profile for **alternative patterns** that could satisfy the same concern (e.g., version-specific configuration APIs). One missed pattern = one confidently wrong "no finding." Record the **complete list of patterns you checked** and where you searched — every absence claim ships with its search record (`checked_patterns` in the output schema), and an absence claim whose record misses a documented pattern is invalid.
+- Do **not** score likelihood here — that is the maintainer's (Phase 2). DO record per-axis **cost evidence**: a qualitative level (low / moderate / high) plus its concrete mechanical basis (boundary quality, spread of coupling, confirmed call-site counts). Cost evidence is mechanical and belongs to this pass; durations never appear anywhere.
 
 ### Phase 2 — Judgment interview (ask what only the human knows)
 
-**If `interactive` is true (default):** Briefly present the findings grouped by axis (one or two sentences per axis is enough — the full report comes in Phase 3), then ask the maintainer the questions the code can't answer.
+**Answers file (`_interview.yaml`):** before asking anything, check the audited root for `_interview.yaml`. If it exists (and `interactive` is true), do NOT call `AskUserQuestion` — the maintainer pre-filled their answers:
+- Each top-level key is an axis (`storage`, `refresh`, `identity_provider`, `authorization`) with `answer` (ideally one of the option labels below; free text is accepted), optional `notes`, and optional `cost_confirmed` (low / moderate / high).
+- Record each `answer` **verbatim** in `interview.answers`, set `interview.source: "file"`, apply the same likelihood mapping table below, and put `cost_confirmed` on that axis.
+- Axes missing from the file route to "Judgment calls for you" (likelihood null), exactly like a "Don't know."
+- Both rendered views must state that judgment inputs came from a pre-filled file, not a live conversation.
+
+This doubles as a product affordance: a consultant can pre-fill a client's known answers before a call instead of blocking on synchronous Q&A.
+
+**If `interactive` is true (default) and no answers file exists:** Briefly present the findings grouped by axis (one or two sentences per axis is enough — the full report comes in Phase 3), then ask the maintainer the questions the code can't answer.
 
 **How to ask:** Use the `AskUserQuestion` tool — the multiple-choice prompt Claude Code provides natively — to ask the questions **one at a time, in order**. Do NOT batch all four into a single text prompt; the experience is markedly better when questions are presented one-by-one with concrete options. After each answer, briefly acknowledge ("Got it — likely Q3") and move on to the next axis. If the maintainer says "skip" or "stop" mid-flow, accept it and proceed to compose the report with what you have; unanswered axes go to "Judgment calls for you."
 
@@ -112,11 +124,22 @@ For each axis, the `AskUserQuestion` call structure:
 
 After all four answers, the maintainer's input supplies **likelihood**; the mechanical pass supplied **cost evidence** (boundary quality, spread of coupling, call-site counts). For any answer of "Don't know," route that axis to "Judgment calls for you" without forcing a likelihood.
 
-**If `interactive` is false:** Skip the interview entirely. Do NOT call `AskUserQuestion`. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted.
+Record each answer **verbatim** — the chosen option label plus anything else the maintainer said. The raw answer ships in the output (`interview.answers`); the audit's `likelihood` field is its normalization, per this fixed table (tests assert the mapping — do not improvise):
 
-### Phase 3 — Compose (the report)
+| Axis | Answer → `likelihood` |
+|---|---|
+| storage | Yes — planned → `high` · Maybe — discussed → `medium` · No — acceptable today → `low` · Don't know → `null` |
+| refresh | Yes — planned → `high` · Tied to storage → `medium` · No — vendor refresh is fine → `low` · Don't know → `null` |
+| identity_provider | Yes — actively planned → `high` · Likely — being discussed → `medium` · Unlikely, defensive value → `low` · No — locked in → `none` |
+| authorization | any concrete change selected → `high` · Neither — current model is fine → `low` · Don't know → `null` |
 
-Fill `assets/report-template.md` with: report metadata (Date, Vendor profile(s), Model used self-reported, Scope), Summary, **What auth calcification means** (a short tailored explanation — see template), Coverage (comprehensive vs sampled, plus all gaps), Boundary assessment (4 signals), Findings by axis (each with evidence + recommended seam), Migration-readiness for any change the maintainer flagged, Prioritized backlog ordered by leverage with each rank traceable to *(mechanical evidence × the maintainer's likelihood/cost)*, "Judgment calls for you," and the Scope/disclaimers block.
+A `null` likelihood routes that axis to "Judgment calls for you."
+
+**If `interactive` is false:** Skip the interview entirely — even if an `_interview.yaml` file exists. Do NOT call `AskUserQuestion`. Route every question above into the "Judgment calls for you" section of the report with no priority ranking. This is the non-interactive mode — useful for CI runs, batch audits, or when you want findings without being prompted.
+
+### Phase 3 — Compose (JSON first, then two rendered views)
+
+The audit has ONE canonical output: a structured JSON document conforming to `assets/audit-schema.json`. The two markdown artifacts are **views rendered from that JSON**. A view may explain and synthesize beyond the JSON, but may never state a claim — a finding, status, anchor, count, or ranking — that is not in it. If, while rendering a view, you notice the JSON is missing or wrong about something: **stop, fix and re-save the JSON first, then re-render.** The JSON and the markdown must never fork.
 
 **Cost language:** Use qualitative descriptors only — **low**, **moderate**, **high** — always grounded in concrete mechanical evidence (e.g., "moderate — three call sites bypass the boundary; the seam exists in one file"). **NEVER emit time estimates** ("1 hour," "2 days," "3 dev-weeks," etc.). Time-to-complete is the maintainer's number; it goes in "Judgment calls for you," not in findings (see non-negotiable #5).
 
@@ -130,24 +153,29 @@ Fill `assets/report-template.md` with: report metadata (Date, Vendor profile(s),
 
 Prioritize **only** with the maintainer's inputs; show which inputs were theirs. Recommend seams; don't apply them.
 
-The skill produces **two artifacts, in this order**: the full report first, then a summary **distilled from the report**. Generate them in that order — the summary must contain nothing that isn't in the report, and every number/anchor in the summary must match the report.
+The skill produces **three artifacts, in this order**:
 
-**Artifact 1 — the full report.** Fill `assets/report-template.md` as described above. Save to the target directory:
-- Default path: `<target>/auth-calcification-audit-report.md`
-- If that path already exists, save as `<target>/auth-calcification-audit-report-2.md`, `-3.md`, etc. — next available integer. Do NOT overwrite; the previous run is the maintainer's record.
+**Artifact 1 — the JSON (the source of truth).** Read `assets/audit-schema.json` and fill it from the Phase 1 record and the Phase 2 answers. Every `description` in the schema is a binding instruction, not documentation. Three rules carry the audit's honesty:
+- **Evidence quotes are verbatim** — copied exactly from files you read in Phase 1. If you cannot quote it, you cannot claim it: go back and read the file, or record the claim per the schema's absence/undetermined rules.
+- **Nothing is stated twice** — no stored counts, no rank fields, no collapsed multi-vendor verdicts. The schema's structure enforces most of this; don't fight it.
+- **Every finding earns its place by citation.** Which signal(s) or axis(es) a finding evidences is expressed solely by which assessments cite its id — reusing one finding under several assessments is correct and encouraged. Before saving, verify every finding is cited by at least one assessment; an uncited finding is work you haven't finished classifying.
 
-**Artifact 2 — the summary.** Distill `assets/summary-template.md` from the report you just wrote. This is the lead artifact — the one the maintainer reads first and the one that earns or loses their trust. Save it alongside the report:
-- Default path: `<target>/auth-calcification-audit-summary.md`
-- If that path already exists, use the next available integer (`-2.md`, etc.). Keep the suffix aligned with the report (if the report became `-report-2.md`, the summary is `-summary-2.md`).
+Save to `<target>/auth-calcification-audit.json`. If that path already exists, save as `…-audit-2.json`, `-3.json`, etc. — next available integer. Do NOT overwrite; the previous run is the maintainer's record.
 
-Do not negotiate either path with the user mid-flow; the convention is deterministic.
+**Artifact 2 — the full report (a view).** Re-read the JSON you just saved and fill `assets/report-template.md` **from it alone** — do not re-open the audited codebase and do not render from memory of the analysis. If the JSON cannot fill a template section, that is a JSON bug to fix (see the fork rule above), not a gap to paper over from recall. Save alongside the JSON:
+- Default path: `<target>/auth-calcification-audit-report.md`, same next-available-integer rule, suffix aligned with the JSON.
 
-**Model disclaimer:** if the Phase 0 self-report triggered the disclaimer condition, prepend it to **both** the report Summary and the top of the summary file.
+**Artifact 3 — the summary (a view).** Render `assets/summary-template.md` **from the JSON** (not from the report). The headline is `synthesis.headline.text` with its cited findings' anchors; the posture line is `synthesis.posture`; scorecard rows are the boundary and axis statuses; every anchor comes from a finding's evidence. Because both views render from the same source, the summary automatically contains nothing the report doesn't. This is the lead artifact — the one the maintainer reads first and the one that earns or loses their trust. Save it alongside the others:
+- Default path: `<target>/auth-calcification-audit-summary.md`, suffix aligned (if the JSON became `-audit-2.json`, the report is `-report-2.md` and the summary is `-summary-2.md`).
+
+Do not negotiate any path with the user mid-flow; the convention is deterministic.
+
+**Model disclaimer:** if the Phase 0 self-report triggered the disclaimer condition, set `meta.disclaimer_fired: true` in the JSON and prepend the disclaimer to **both** the report Summary and the top of the summary file. The JSON flag and the rendered disclaimers must agree — tests check this.
 
 **Presentation — chat output for Phase 3:**
 - Do **not** print the report or the summary into chat. Do **not** recap findings axis-by-axis.
-- After both files are saved, **open the summary file as a preview** (so it renders directly for the user) and stop. The summary is the lead; the report is the deep-dive it points to.
-- A single trailing line is acceptable only if a preview cannot be surfaced: `Summary → <summary path> · Full report → <report path>`.
+- After all three files are saved, **open the summary file as a preview** (so it renders directly for the user) and stop. The summary is the lead; the report is the deep-dive it points to; the JSON is the machine-readable record.
+- A single trailing line is acceptable only if a preview cannot be surfaced: `Summary → <summary path> · Full report → <report path> · Data → <json path>`.
 
 The files are the artifacts; the chat is not a second copy of them.
 
@@ -164,7 +192,7 @@ The chat output during a run should be sparse. Default to silence; speak only at
 
 **During Phase 2:** ask one `AskUserQuestion` at a time. Between questions: brief acknowledgments (≤1 sentence). No findings recap — the recap is the report.
 
-**During Phase 3:** write both files (report, then summary distilled from it), then open the summary as a preview. No findings dump in chat. See the Phase 3 "Presentation" block above.
+**During Phase 3:** write the JSON, render the two views from it (report, then summary), then open the summary as a preview. No findings dump in chat. See the Phase 3 "Presentation" block above.
 
 **Never** describe what you are about to do in chat. Just do it.
 
@@ -173,8 +201,9 @@ The chat output during a run should be sparse. Default to silence; speak only at
 - `references/detection-playbook.md` — how to detect each signal from a profile (the mechanical pass).
 - `references/vendor-profile-schema.md` — the structure every profile follows; read this to add a provider.
 - `vendors/*.md` — per-provider knowledge (currently `amplify-cognito.md`, `auth0.md`).
-- `assets/report-template.md` — the full report structure (artifact 1).
-- `assets/summary-template.md` — the one-screen summary distilled from the report (artifact 2, the lead).
+- `assets/audit-schema.json` — the canonical output schema. Artifact 1 conforms to it; its `description` fields are binding generation instructions.
+- `assets/report-template.md` — the full report structure (artifact 2, a view of the JSON).
+- `assets/summary-template.md` — the one-screen summary (artifact 3, the lead, a view of the JSON).
 
 ## Common mistakes to avoid
 - **Grepping and stopping.** A text match is a candidate; the finding requires reading the code around it. Skipping the confirm step produces the shallow checklist this skill is meant to replace.
@@ -183,4 +212,6 @@ The chat output during a run should be sparse. Default to silence; speak only at
 - **Forcing one vendor's framing onto another** (e.g. Cognito's silent auto-refresh onto Auth0's more explicit model). Use the profile's notes.
 - **Scoring without the human, or implying "secure."** Both violate the non-negotiables above.
 - **Time/effort estimates.** Don't write "1 hour," "2–3 dev-weeks," or any duration. Cost is qualitative (low/moderate/high) with mechanical justification; time-to-complete is the maintainer's number. See non-negotiable #5.
+- **Rendering the markdown from memory instead of the JSON.** The views render from the saved JSON alone. A claim that isn't in the JSON doesn't go in the markdown — fix the JSON first, then re-render. Forked views are the drift this architecture exists to prevent.
+- **Paraphrased evidence quotes.** A quote is copied text, character for character. A paraphrase (or a quote written from memory) fails mechanical verification and reads as a fabricated finding.
 - **Walls of text in chat.** The report is the artifact. Chat should be tight: vendor detected → save path → 1-paragraph headline. The "Chat verbosity discipline" section is binding.

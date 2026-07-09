@@ -1,0 +1,31 @@
+{
+  "fixture": "bounded-cognito",
+  "assertions": [
+    { "path": "meta.mode", "equals": "non-interactive" },
+    { "path": "vendors", "length": 1 },
+    { "path": "vendors.0.profile", "equals": "amplify-cognito.md" },
+
+    { "path": "boundary.<v>.b1_anti_corruption.status", "equals": "present",
+      "note": "precision: domain types, vendor confined to the adapter — flagging this is crying wolf" },
+    { "path": "boundary.<v>.b2_injected.status", "equals": "present" },
+    { "path": "boundary.<v>.b3_contract_tested.status", "equals": "present",
+      "note": "the contract suite exists and must be recognized" },
+    { "path": "boundary.<v>.b4_client_server_split.status", "equals": "not_applicable" },
+
+    { "path": "axes.storage.per_vendor.<v>.classification", "equals": "custom_adapter",
+      "note": "a real KeyValueStorageInterface implementation — the inverse of the look-alike trap" },
+    { "path": "axes.refresh.per_vendor.<v>.classification", "equals": "owned",
+      "note": "401 path + single-flight + failure route all present" },
+    { "path": "axes.identity_provider.per_vendor.<v>.classification", "equals": "localized" },
+    { "path": "axes.authorization.per_vendor.<v>.claims_handling", "equals": "policy_layer" },
+    { "path": "axes.authorization.per_vendor.<v>.api_token_type", "equals": "access_token" },
+
+    { "path": "axes.storage.likelihood", "isNull": true },
+    { "path": "axes.refresh.likelihood", "isNull": true },
+    { "path": "axes.identity_provider.likelihood", "isNull": true },
+    { "path": "axes.authorization.likelihood", "isNull": true },
+    { "path": "interview", "isNull": true },
+    { "path": "backlog", "isNull": true },
+    { "path": "migration_readiness", "isNull": true }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "fixture": "calcified-cognito-interactive",
+  "assertions": [
+    { "path": "meta.mode", "equals": "interactive" },
+    { "path": "vendors", "length": 1 },
+    { "path": "vendors.0.profile", "equals": "amplify-cognito.md" },
+
+    { "path": "boundary.<v>.b1_anti_corruption.status", "equals": "absent" },
+    { "path": "boundary.<v>.b2_injected.status", "equals": "absent" },
+    { "path": "boundary.<v>.b3_contract_tested.status", "equals": "absent" },
+    { "path": "boundary.<v>.b4_client_server_split.status", "equals": "not_applicable" },
+    { "path": "axes.storage.per_vendor.<v>.classification", "equals": "vendor_default" },
+    { "path": "axes.refresh.per_vendor.<v>.classification", "equals": "inherited" },
+    { "path": "axes.identity_provider.per_vendor.<v>.classification", "equals": "scattered" },
+    { "path": "axes.authorization.per_vendor.<v>.claims_handling", "equals": "inline_reads" },
+    { "path": "axes.authorization.per_vendor.<v>.api_token_type", "equals": "id_token" },
+
+    { "path": "interview.source", "equals": "file",
+      "note": "answers came from _interview.yaml, not a live maintainer — and the JSON must say so" },
+    { "path": "interview.answers.storage.answer", "equals": "Yes — planned" },
+    { "path": "interview.answers.refresh.answer", "equals": "Tied to storage" },
+    { "path": "interview.answers.identity_provider.answer", "equals": "No — locked in" },
+    { "path": "interview.answers.authorization.answer", "equals": "RBAC/ABAC or finer permissions" },
+
+    { "path": "axes.storage.likelihood", "equals": "high" },
+    { "path": "axes.storage.cost_confirmed", "equals": "moderate" },
+    { "path": "axes.refresh.likelihood", "equals": "medium" },
+    { "path": "axes.identity_provider.likelihood", "equals": "none" },
+    { "path": "axes.authorization.likelihood", "equals": "high" },
+
+    { "path": "backlog", "isNull": false, "note": "the maintainer answered — the ranking is owed" },
+    { "path": "backlog", "minLength": 2 },
+    { "path": "backlog.0.axes", "some": "storage",
+      "note": "storage: likelihood high + maintainer-confirmed moderate cost vs authorization's high cost — highest leverage should rank #1" },
+    { "path": "migration_readiness", "isNull": false,
+      "note": "a storage change was flagged as planned — readiness for it must be assessed" },
+    { "path": "migration_readiness", "some": { "axis": "storage" } }
+  ]
+}

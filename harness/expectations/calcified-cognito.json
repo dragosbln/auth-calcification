@@ -1,0 +1,35 @@
+{
+  "fixture": "calcified-cognito",
+  "assertions": [
+    { "path": "meta.mode", "equals": "non-interactive" },
+    { "path": "vendors", "length": 1 },
+    { "path": "vendors.0.profile", "equals": "amplify-cognito.md" },
+
+    { "path": "boundary.<v>.b1_anti_corruption.status", "equals": "absent",
+      "note": "recall: vendor session/user types leak into app code" },
+    { "path": "boundary.<v>.b2_injected.status", "equals": "absent",
+      "note": "recall: direct vendor imports at call sites, no port" },
+    { "path": "boundary.<v>.b3_contract_tested.status", "equals": "absent",
+      "note": "recall: tests mock the vendor; no contract suite" },
+    { "path": "boundary.<v>.b4_client_server_split.status", "equals": "not_applicable",
+      "note": "no SSR surface — must be not_applicable, never a fabricated gap" },
+
+    { "path": "axes.storage.per_vendor.<v>.classification", "equals": "vendor_default",
+      "note": "THE original-bug axis: default localStorage, no custom adapter" },
+    { "path": "axes.refresh.per_vendor.<v>.classification", "equals": "inherited",
+      "note": "bare refresh; no 401 path, no single-flight, no failure route" },
+    { "path": "axes.identity_provider.per_vendor.<v>.classification", "equals": "scattered" },
+    { "path": "axes.authorization.per_vendor.<v>.claims_handling", "equals": "inline_reads",
+      "note": "inline cognito:groups reads in components" },
+    { "path": "axes.authorization.per_vendor.<v>.api_token_type", "equals": "id_token",
+      "note": "ID token authorizes the API — designed trap" },
+
+    { "path": "axes.storage.likelihood", "isNull": true },
+    { "path": "axes.refresh.likelihood", "isNull": true },
+    { "path": "axes.identity_provider.likelihood", "isNull": true },
+    { "path": "axes.authorization.likelihood", "isNull": true },
+    { "path": "interview", "isNull": true },
+    { "path": "backlog", "isNull": true, "note": "non-negotiable: no ranking without a human" },
+    { "path": "migration_readiness", "isNull": true }
+  ]
+}

@@ -1,0 +1,24 @@
+#!/bin/sh
+# Pre-commit: the free, deterministic slice of the testing layer
+# (see decisions.md D19). LLM runs (harness/run_fixture.ts) cost money and
+# never run here. Emergency bypass: git commit --no-verify
+
+# Only run when the testing layer — or anything it guards — is staged.
+if ! git diff --cached --name-only --diff-filter=ACMRD |
+  grep -qE '^(harness/|skill/|fixtures/|\.claude-plugin/)'; then
+  exit 0
+fi
+
+# Hooks run in non-interactive shells, where fnm's node is not on PATH.
+if ! command -v node >/dev/null 2>&1; then
+  FNM_BIN="$HOME/.local/share/fnm/aliases/default/bin"
+  [ -x "$FNM_BIN/node" ] && PATH="$FNM_BIN:$PATH" && export PATH
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found — install Node >= 23.6 or fix PATH (see harness/package.json engines)" >&2
+  exit 1
+fi
+
+cd "$(git rev-parse --show-toplevel)/harness" || exit 1
+echo "pre-commit: running harness checks (typecheck + lint + check + mutants)…"
+npm test --silent
