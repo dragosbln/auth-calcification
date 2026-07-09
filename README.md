@@ -24,9 +24,11 @@ Plus four **boundary signals** that determine cost on every axis above: anti-cor
 
 **What makes it trustworthy:**
 - **Mechanical detection** (grep + confirm) — no guesswork
+- **Machine-verifiable evidence** — every finding carries a verbatim quote from the cited line; a fabricated or mis-anchored finding fails verification against your actual code
 - **Escalates judgment** — never fabricates likelihood or cost; routes those to "Judgment calls for you"
 - **No false all-clear** — coverage section reports what was analyzed and what wasn't
 - **Vendor-agnostic** — works across providers via pluggable profiles (Cognito + Auth0 included; Firebase/NextAuth/Better Auth deferred to v2)
+- **Tested, not vibed** — a four-layer test harness (schema validation, honesty invariants, per-fixture ground truth, JSON↔markdown agreement) runs on every commit and against real skill runs; see [`harness/`](harness/) and the [decisions log](decisions.md)
 
 See [`methodology.md`](methodology.md) for the full framework.
 
@@ -88,9 +90,10 @@ Use this for CI runs, batch audits, or when you want findings without being prom
 1. **Detect vendors** (reads `package.json`, loads matching profiles)
 2. **Run mechanical pass** (locate → confirm for each signal)
 3. **Interview** (if `--interactive=true`, default) — asks likelihood/cost questions
-4. **Produce two artifacts** in the target directory:
+4. **Produce three artifacts** in the target directory:
+   - `auth-calcification-audit.json` — the canonical, machine-readable record of the whole audit (every finding with verbatim quoted evidence, coverage, per-vendor verdicts). The two markdown files are rendered **from** this JSON — it's the source of truth, and it's what makes the audit diffable over time and checkable in CI.
    - `auth-calcification-audit-summary.md` — a one-screen summary (posture, headline finding, a 5-row scorecard, top moves, and what only you can decide). **This is the lead** — it opens as a preview when the run finishes.
-   - `auth-calcification-audit-report.md` — the full report the summary is distilled from: Coverage, Boundary Assessment (4 signals), Findings by Axis (4 axes with evidence), Migration-readiness, Prioritized Backlog, and Judgment Calls.
+   - `auth-calcification-audit-report.md` — the full report: Coverage, Boundary Assessment (4 signals), Findings by Axis (4 axes with evidence), Migration-readiness, Prioritized Backlog, and Judgment Calls.
 
 The summary is engineered to be skimmed first; open the full report when you want the evidence and per-axis detail.
 

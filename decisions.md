@@ -490,3 +490,34 @@ still deferred by design.
 invariants → fixture ground truth → cross-format agreement, all free at commit time,
 all applied plus quote verification on every live run. Open deferred threads:
 interview mocking (unlocks backlog/ranking tests), model matrix, LLM-as-judge.
+
+## D25 — Controlled-demolition drills passed; pre-publish state (2026-07-09)
+
+Two deliberate-regression exercises validated the net end to end:
+
+**Mechanical drill:** 7 planted regressions across 6 surfaces (fixture source, two
+committed JSONs, a committed summary, the schema, plugin metadata, SKILL.md prose) —
+each caught by its intended layer, including the schema-loosening plant caught as a
+MISSED mutant, and the look-alike-trap regression that slips past agreement's token
+matching and is stopped only by the expectations layer.
+
+**Live drill (the capstone):** the verbatim-quote rule was inverted across all six
+places it is stated ("quotes are readable paraphrases"). The full free suite stayed
+GREEN — prose instructions are invisible to commit-time checks, by construction. One
+live run on mixed-edge-cases (Opus 4.7, $3.49, 38 turns): shape valid, then **I4
+failed on all 35 evidence anchors across 17 findings** ("found nowhere in file").
+The flagship check caught the flagship failure class on its first real opportunity.
+Rung-2 prose rules are enforceable — but only by live-run + harness, never by static
+checks. That division of labor is the article's closing argument.
+
+Pre-publish fixes: plugin.json placeholder homepage/repository → real repo
+(dragosbln/auth-calcification); README updated to the three-artifact flow + a
+"machine-verifiable evidence" / "tested, not vibed" trust section.
+
+**Known-untested surface at publish time (top risk, deliberate):** the INTERACTIVE
+path — every live run so far was non-interactive. Interview capture, the likelihood
+mapping table, ranked backlog, migration_readiness, cost_confirmed have never been
+produced by a real run (only mutant-tested). Interactive is the DEFAULT mode for real
+users. Mitigation: one manual interactive run on a fixture before publish; proper fix
+is the deferred interview-mocking thread. Also never fired live: the other/undetermined
+hatches (expected to fire first on production codebases — that is them working).

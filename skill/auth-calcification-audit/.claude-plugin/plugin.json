@@ -6,8 +6,8 @@
     "name": "Dragos Bilaniuc",
     "email": "dragos.bilaniuc@gmail.com"
   },
-  "homepage": "https://github.com/YOUR-USERNAME/auth-calcification",
-  "repository": "https://github.com/YOUR-USERNAME/auth-calcification",
+  "homepage": "https://github.com/dragosbln/auth-calcification",
+  "repository": "https://github.com/dragosbln/auth-calcification",
   "license": "MIT",
   "keywords": ["security", "audit", "authentication", "architecture", "calcification", "risk-assessment", "cognito", "auth0"],
   "category": "security"
