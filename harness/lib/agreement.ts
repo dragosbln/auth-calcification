@@ -112,35 +112,36 @@ export function checkAgreement(doc: AuditDoc, reportMd: string, summaryMd: strin
     for (const { display, href } of extractLinks(md)) {
       if (/^https?:/.test(href)) continue;
       const hrefLine = href.match(/^([^#]+)#L(\d+)$/);
-      // display shapes seen in real renders: 'file:12', 'file:12–14' (range),
-      // ':12' (line-only continuation of a just-cited file), or bare 'file'
-      const displayRange = display.match(/^(.+):(\d+)\s*[–—-]\s*\d+$/);
-      const displayLine = displayRange ?? display.match(/^(.+):(\d+)$/);
-      const displayLineOnly = display.match(/^:(\d+)$/);
-      const hrefFile = cleanPath(hrefLine ? hrefLine[1] : href);
-      const displayFile = displayLine ? cleanPath(displayLine[1]) : cleanPath(display);
+      if (!hrefLine) continue; // whole-file / dir / sibling-artifact links carry no line claim
+      const hrefFile = cleanPath(hrefLine[1]);
+      const line = hrefLine[2];
 
-      if (hrefLine || displayLine || displayLineOnly) {
-        if (displayLineOnly) {
-          if (hrefLine && displayLineOnly[1] !== hrefLine[2]) {
-            err(`A1 ${name}: link display line ${displayLineOnly[1]} != href line ${hrefLine[2]} ('${display}')`);
-            continue;
-          }
-        } else {
-          if (displayFile !== hrefFile) {
-            err(`A1 ${name}: link display '${display}' and href '${href}' name different files`);
-            continue;
-          }
-          if (displayLine && hrefLine && displayLine[2] !== hrefLine[2]) {
-            err(`A1 ${name}: link display line ${displayLine[2]} != href line ${hrefLine[2]} ('${display}')`);
-            continue;
-          }
+      // JOB 1 (always first, never short-circuited): a line-anchored link is a
+      // claim, so the anchor must be backed by a JSON evidence line. This is
+      // the honesty property — it catches a mis-anchored link regardless of how
+      // the display text reads.
+      if (!anchors.has(`${hrefFile}#${line}`) && !rangeEnds.has(`${hrefFile}#${line}`)) {
+        err(`A1 ${name}: anchor ${hrefFile}:${line} is not backed by any evidence anchor in the JSON`);
+      }
+
+      // JOB 2 (only when the DISPLAY is itself a path:line): a good renderer
+      // links a symbol (`ISessionRepository`), a code snippet, or a phrase
+      // ("boundary") to a location — that display is NOT a path and must not be
+      // forced to match the href. Only when the display spells out a path:line
+      // must it agree with the href: same line, and the display file a suffix of
+      // the href file (basename abbreviation like `foo.ts:11` for a/b/foo.ts).
+      const dRange = display.match(/^`?(.+?):(\d+)\s*[–—-]\s*\d+`?$/);
+      const dPathLine = dRange ?? display.match(/^`?([\w./-]+\.\w+):(\d+)`?$/);
+      const dLineOnly = display.match(/^`?:(\d+)`?$/);
+      if (dPathLine) {
+        const df = cleanPath(dPathLine[1]);
+        if (dPathLine[2] !== line) {
+          err(`A1 ${name}: link display line ${dPathLine[2]} != href line ${line} ('${display}')`);
+        } else if (hrefFile !== df && !hrefFile.endsWith("/" + df)) {
+          err(`A1 ${name}: link display path '${df}' contradicts href file '${hrefFile}'`);
         }
-        // a line-anchored link is a claim: it must be backed by JSON evidence
-        const line = hrefLine?.[2] ?? displayLine?.[2] ?? displayLineOnly?.[1];
-        if (line && !anchors.has(`${hrefFile}#${line}`) && !rangeEnds.has(`${hrefFile}#${line}`)) {
-          err(`A1 ${name}: anchor ${hrefFile}:${line} is not backed by any evidence anchor in the JSON`);
-        }
+      } else if (dLineOnly && dLineOnly[1] !== line) {
+        err(`A1 ${name}: link display line ${dLineOnly[1]} != href line ${line} ('${display}')`);
       }
     }
     // bare path:line outside links
