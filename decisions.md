@@ -597,3 +597,48 @@ step 7, A7 reorder here). Bringing agreement under mutation testing is its own s
 initiative, deferred. Interactive path is no longer the top publish risk — it has a
 live pass + committed guard. The remaining deferred threads are unchanged: model matrix,
 LLM-as-judge for headline quality and backlog order.
+
+## D28 — First real production run (installed plugin) + A1 calibration (2026-07-09)
+
+Skill installed as a real user (`/plugin marketplace add` + `/plugin install` from the
+published main) and run interactively on an external repo:
+`matt-wigg/aws-amplify-next-js-clean-architecture` (Amplify v6.15, Next.js SSR).
+`check.ts` passed clean — all 14 findings' quotes verify verbatim against the real
+cloned code — so the packaged plugin (paths, references, vendor profile) resolves
+correctly outside the dev layout. Output quality: high, and it exercised surfaces no
+fixture had:
+- **B4 (client/server split) assessed on real SSR code** for the first time —
+  correctly present (`runWithAmplifyServerContext` server entry vs browser entry, no
+  in-app context branching).
+- **The `other` escape hatch fired live for the first time** and correctly:
+  `authorization.api_token_type: "other"` + `claims_handling: "other"` because the app
+  constructs no Authorization header (token selection internal to Amplify's cookie Data
+  client) and delegates authz to the backend schema — a real pattern outside the enum,
+  understood and noted, not rounded. Exactly the D7 design meeting reality.
+- Caught the subtle B2 gap (client `signOut` bypasses the `ISessionRepository` port),
+  produced a genuine synthesis (build the Principal+policy seam before RBAC lands, since
+  zero claim reads exist today but there's no contract suite), and honestly recorded the
+  gitignored `amplify_outputs.json` as a coverage gap.
+
+**A1 agreement calibration bug (fixed in the harness).** `agree.ts` reported 26 A1
+violations; programmatic check showed **17 of 18 view anchors backed by evidence, 1
+not** — so ~25 false positives + 1 real. Root cause: A1 assumed link DISPLAY text is
+always a `path:line`, but Opus 4.8 writes richer links — a symbol (`` `ISessionRepository` ``),
+a code snippet (`` `Amplify.configure(...)` ``), a phrase ("boundary"), or a basename
+abbreviation (`get-current-user.ts:11`) — pointing at real backed anchors. That is
+BETTER prose, not a defect; forcing display==path would degrade the artifact to satisfy
+the check (the A6 anti-pattern again). Worse, the "different files" branch `continue`d
+before the anchor-backing check, MASKING the one real finding. Fix: always run job 1
+(anchor must be a backed evidence line — the honesty property), and only run job 2
+(display/href file consistency) when the display actually parses as a path:line, allowing
+basename suffix-match. Production run now: 26 → 1. Fixtures unchanged (they used strict
+path:line displays, so no regression). The surviving 1 is genuine: the summary links the
+word "boundary" to `session.repository.ts#L3`, but the evidence is at :2 — a one-line
+mis-anchor (right file, right region, imprecise line). Minor skill imperfection, not a
+fabrication; reported to the user, not auto-fixed.
+
+Follow-ups (optional): (a) SKILL "Link every file reference" wording still says display
+is `path:line` — worth softening to bless symbol/snippet display as long as the href is
+a backed `#L` anchor (1.4.1), so docs match the observed-good behavior; (b) agreement
+layer still lacks permanent mutation coverage (this live run was its adversarial test
+this round).
